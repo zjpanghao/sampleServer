@@ -112,8 +112,7 @@ void ev_server_start_multhread(int port, int nThread) {
      /* The /dump URI will dump all requests to stdout and say 200 ok. */
     //evhttp_set_cb(http, "/identify", identifyCb, (void*)arg);
     std::vector<HttpControl> controls;
-    //initUserControl(controls);
-    //initFaceControl(controls);
+    initFaceControl(controls);
     for (HttpControl control : controls) {
       evhttp_set_cb(http, control.url.c_str(), control.cb, NULL);
     }

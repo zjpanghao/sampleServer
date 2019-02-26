@@ -85,7 +85,7 @@ void faceDetectCb(struct evhttp_request *req, void *arg) {
 
 void initFaceControl(std::vector<HttpControl> &controls) {
   std::vector<HttpControl> controlList = {
-    {"/face-api/v3/face/detect", faceDetectCb},
+    {"/detect", faceDetectCb}
   };
   for (HttpControl &control : controlList) {
     controls.push_back(control);
