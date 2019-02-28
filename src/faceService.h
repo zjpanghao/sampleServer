@@ -9,12 +9,21 @@
 #include <unistd.h>
 #include <mutex>
 #include <condition_variable>
+#include "config/config.h"
 
+class DBPool;
 namespace kface {
+struct News;
+class FaceRepo;
 class FaceService {
  public:
   static FaceService& getFaceService();
   FaceService();
+  void init(const kunyan::Config &config); 
+  std::shared_ptr<News> getLatestNews();
+
+ private:
+  std::shared_ptr<FaceRepo> newsRepo_;
 };
 }
 

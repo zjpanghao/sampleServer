@@ -37,6 +37,7 @@
 #include "util.h"
 #include "httpUtil.h"
 #include "faceService.h"
+#include "faceEntity.h"
 
 namespace kface {
 void faceDetectCb(struct evhttp_request *req, void *arg) {
@@ -78,8 +79,12 @@ void faceDetectCb(struct evhttp_request *req, void *arg) {
   std::vector<unsigned char> cdata;
   cdata.assign(&decodeData[0], &decodeData[0] + decodeLen);
   FaceService &service = FaceService::getFaceService(); 
-  faceResult["result"] = "test";
-  evbuffer_add_printf(response, "%s", faceResult.toStyledString().c_str());
+  std::shared_ptr<News> news = service.getLatestNews();
+  std::string result = news->url;
+  if (news != nullptr) {
+    result = news->abstract;
+  }
+  evbuffer_add_printf(response, "%s", result.c_str());
   evhttp_send_reply(req, 200, "OK", response);
 }
 

@@ -75,6 +75,8 @@
 #include "faceService.h"
 #include "httpUtil.h"
 #include "faceControl.h"
+#include <sstream>
+#include "config/config.h"
 
 
 #define MAX_IMG_SIZE 1024*1024*50
@@ -91,7 +93,8 @@ void httpThread(void *param) {
   event_base_dispatch(base);
 }
 
-void ev_server_start_multhread(int port, int nThread) {
+
+void server_start_multhread(int port, int nThread) {
   if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		return;
   evutil_socket_t fd;
@@ -221,4 +224,23 @@ int ev_server_start(int port)
 	event_base_dispatch(base);
 
 	return 0;
+}
+
+void ev_server_start_multhread(const kunyan::Config &config) {
+  std::string portConfig = config.get("server", "port");
+  std::string threadConfig = config.get("server", "thread");
+  std::stringstream ss;
+  ss << portConfig;
+  int port;
+  ss >> port;
+
+  ss.clear();
+  ss.str("");
+  
+  int threadNum = 1;
+  if (!threadConfig.empty()) {
+    ss << threadConfig;
+    ss >> threadNum;
+  }
+  server_start_multhread(port, threadNum);
 }
