@@ -40,7 +40,7 @@
 #include "faceEntity.h"
 
 namespace kface {
-void faceDetectCb(struct evhttp_request *req, void *arg) {
+void FaceControl::faceDetectCb(struct evhttp_request *req, void *arg) {
   struct timeval tv[2];
   int rc = 0;
   Json::Value root;
@@ -88,13 +88,11 @@ void faceDetectCb(struct evhttp_request *req, void *arg) {
   evhttp_send_reply(req, 200, "OK", response);
 }
 
-void initFaceControl(std::vector<HttpControl> &controls) {
+std::vector<HttpControl> FaceControl::getMapping() {
   std::vector<HttpControl> controlList = {
-    {"/detect", faceDetectCb}
+    {"/detect", FaceControl::faceDetectCb}
   };
-  for (HttpControl &control : controlList) {
-    controls.push_back(control);
-  }
+  return controlList;
 }
 
 }

@@ -18,11 +18,11 @@
 #include <signal.h>
 #include "faceService.h"
 #include "db/dbpool.h"
-
+#include <memory>
+#include "faceControl.h"
 
 using kface::FaceService;
-
-extern void ev_server_start_multhread(const kunyan::Config &config);
+extern void ev_server_start_multhread(const kunyan::Config &config, const std::vector<std::shared_ptr<kface::GeneralControl>> &controls);
 
 static void initGlog(const std::string &name) {
   DIR *dir = opendir("log");
@@ -45,7 +45,8 @@ int main(int argc, char *argv[]) {
   kunyan::Config config("config.ini");
   FaceService &service = FaceService::getFaceService();
   service.init(config);
-  ev_server_start_multhread(config); 
+  static std::vector<std::shared_ptr<kface::GeneralControl>> controls{std::make_shared<kface::FaceControl>()};
+  ev_server_start_multhread(config, controls); 
   while (1) {
     ::sleep(10000);
   }

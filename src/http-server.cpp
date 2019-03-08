@@ -94,7 +94,9 @@ void httpThread(void *param) {
 }
 
 
-void server_start_multhread(int port, int nThread) {
+void server_start_multhread(int port, 
+                                      int nThread, 
+                                      const std::vector<std::shared_ptr<GeneralControl>> &controls) {
   if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		return;
   evutil_socket_t fd;
@@ -114,10 +116,10 @@ void server_start_multhread(int port, int nThread) {
   	}
      /* The /dump URI will dump all requests to stdout and say 200 ok. */
     //evhttp_set_cb(http, "/identify", identifyCb, (void*)arg);
-    std::vector<HttpControl> controls;
-    initFaceControl(controls);
-    for (HttpControl control : controls) {
-      evhttp_set_cb(http, control.url.c_str(), control.cb, NULL);
+    for (auto &generalControl : controls) {
+      for (auto &control : generalControl->getMapping()) {
+        evhttp_set_cb(http, control.url.c_str(), control.cb, NULL);
+      }
     }
     if (i == 0) {
       struct evhttp_bound_socket *bound;
@@ -166,11 +168,6 @@ int ev_server_start(int port)
 
 	/* The /dump URI will dump all requests to stdout and say 200 ok. */
   std::vector<HttpControl> controls;
-  initFaceControl(controls);
-  for (HttpControl control : controls) {
-    evhttp_set_cb(http, control.url.c_str(), control.cb, NULL);
-  }
-
 	/* We want to accept arbitrary requests, so we need to set a "generic"
 	 * cb.  We can also add callbacks for specific paths. */
 	//evhttp_set_gencb(http, send_document_cb, argv[1]);
@@ -226,7 +223,7 @@ int ev_server_start(int port)
 	return 0;
 }
 
-void ev_server_start_multhread(const kunyan::Config &config) {
+void ev_server_start_multhread(const kunyan::Config &config, const std::vector<std::shared_ptr<GeneralControl>> &controls) {
   std::string portConfig = config.get("server", "port");
   std::string threadConfig = config.get("server", "thread");
   std::stringstream ss;
@@ -242,5 +239,5 @@ void ev_server_start_multhread(const kunyan::Config &config) {
     ss << threadConfig;
     ss >> threadNum;
   }
-  server_start_multhread(port, threadNum);
+  server_start_multhread(port, threadNum, controls);
 }
