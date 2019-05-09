@@ -36,11 +36,12 @@
 #include <regex>
 #include "util.h"
 #include "httpUtil.h"
+
 #include "faceService.h"
 #include "faceEntity.h"
 
 namespace kface {
-void FaceControl::faceDetectCb(struct evhttp_request *req, void *arg) {
+void FaceControl::faceDetectCb(struct evhtp_request *req, void *arg) {
   struct timeval tv[2];
   int rc = 0;
   Json::Value root;
@@ -48,8 +49,8 @@ void FaceControl::faceDetectCb(struct evhttp_request *req, void *arg) {
   Json::Value items;
   Json::Reader reader;
  
-  evbuffer *response = evbuffer_new();
-  if (evhttp_request_get_command(req) != EVHTTP_REQ_POST) {
+  evbuffer *response = req->buffer_out;
+  if (req->method != htp_method_POST) {
     rc = -1;
     sendResponse(rc, "method not support", req, response);
     return;
@@ -85,7 +86,8 @@ void FaceControl::faceDetectCb(struct evhttp_request *req, void *arg) {
     result = news->abstract;
   }
   evbuffer_add_printf(response, "%s", result.c_str());
-  evhttp_send_reply(req, 200, "OK", response);
+  //evhttp_send_reply(req, 200, "OK", response);
+  evhtp_send_reply(req, EVHTP_RES_OK);
 }
 
 std::vector<HttpControl> FaceControl::getMapping() {

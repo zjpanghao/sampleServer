@@ -77,7 +77,7 @@
 
 void sendResponse(int errorCode, 
     std::string msg,  
-    struct evhttp_request *&req, 
+    struct evhtp_request *&req, 
     evbuffer *&response) {
   Json::Value root;
   std::stringstream ss;
@@ -87,14 +87,14 @@ void sendResponse(int errorCode,
   std::string s = root.toStyledString();
   evbuffer_add_printf(response, "%s", s.c_str());
   LOG(ERROR) << s;
-  evhttp_send_reply(req, 200, "OK", response);
+  evhtp_send_reply(req, 200);
 }
 
 template<class vvalue>
 void sendResponseResult(int errorCode, 
     std::string msg,
     const std::map<std::string, vvalue> &paraMap,
-    struct evhttp_request *&req, 
+    struct evhtp_request *&req, 
     evbuffer *&response) {
   Json::Value root;
   std::stringstream ss;
@@ -106,11 +106,11 @@ void sendResponseResult(int errorCode,
   }
   std::string s = root.toStyledString();
   evbuffer_add_printf(response, "%s", s.c_str());
-  evhttp_send_reply(req, 200, "OK", response);
+  evhtp_send_reply(req, 200);
 }
 
-std::string getBodyStr(struct evhttp_request *req) {
-  struct evbuffer *buf = evhttp_request_get_input_buffer(req);
+std::string getBodyStr(struct evhtp_request *req) {
+  struct evbuffer *buf = req->buffer_in;
   std::string result = "";
   //if (evbuffer_get_length(buf) >= MAX_RECV_SIZE  - 1024) {
 	//  return "";

@@ -5,6 +5,7 @@ FaceRepo::FaceRepo(std::shared_ptr<DBPool> pool):pool_(pool) {
 
 std::shared_ptr<News> FaceRepo::getLatestNews() {
   std::shared_ptr<News> news;
+#ifdef USE_MYSQL
   Connection_T conn = pool_->GetConnection();
   Connection_execute(conn, "set names utf8");
   PreparedStatement_T p = Connection_prepareStatement(conn, 
@@ -17,6 +18,7 @@ std::shared_ptr<News> FaceRepo::getLatestNews() {
     news->abstract = ResultSet_getString(r, 3);
   }
   pool_->returnConnection(conn);
+#endif
   return news;
 }
 

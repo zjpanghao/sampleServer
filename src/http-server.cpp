@@ -77,6 +77,7 @@
 #include "faceControl.h"
 #include <sstream>
 #include "config/config.h"
+#include "evhtp/evhtp.h"
 
 
 #define MAX_IMG_SIZE 1024*1024*50
@@ -94,6 +95,24 @@ void httpThread(void *param) {
 }
 
 
+void server_evhtp_start_multhread(int port, 
+    int backLog, 
+    const std::vector<std::shared_ptr<GeneralControl>> &controls) {
+  evhtp_t           * htp;
+  struct event_base * evbase;
+  evbase = event_base_new();
+  htp    = evhtp_new(evbase, NULL);
+  //evhtp_ssl_init(htp, parse__ssl_opts_(argc, argv));
+  for (auto &generalControl : controls) {
+    for (auto &control : generalControl->getMapping()) {
+      evhtp_set_cb(htp, control.url.c_str(), control.cb, NULL);
+    }
+  }
+  evhtp_bind_socket(htp, "0.0.0.0", port, backLog);
+  event_base_loop(evbase, 0);
+}
+
+#if 0
 void server_start_multhread(int port, 
                                       int nThread, 
                                       const std::vector<std::shared_ptr<GeneralControl>> &controls) {
@@ -223,6 +242,7 @@ int ev_server_start(int port)
 	return 0;
 }
 
+#endif
 void ev_server_start_multhread(const kunyan::Config &config, const std::vector<std::shared_ptr<GeneralControl>> &controls) {
   std::string portConfig = config.get("server", "port");
   std::string threadConfig = config.get("server", "thread");
@@ -239,5 +259,6 @@ void ev_server_start_multhread(const kunyan::Config &config, const std::vector<s
     ss << threadConfig;
     ss >> threadNum;
   }
-  server_start_multhread(port, threadNum, controls);
+  server_evhtp_start_multhread(port, 128, controls);
 }
+

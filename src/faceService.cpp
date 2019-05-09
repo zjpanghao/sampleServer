@@ -17,9 +17,11 @@ FaceService::FaceService() {
 }
 
 void FaceService::init(const kunyan::Config &config) {
+#ifdef USE_MYSQL
   std::shared_ptr<DBPool> pool(new DBPool());
   pool->PoolInit(new DataSource(config));
   newsRepo_.reset(new FaceRepo(pool));
+#endif
 }
 
 std::shared_ptr<News> FaceService::getLatestNews() {
