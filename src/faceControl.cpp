@@ -64,17 +64,22 @@ void FaceControl::faceDetectCb(struct evhtp_request *req, void *arg) {
   }
   std::string data;
   
-  getJsonString(root, "image", data);
+  JsonUtil::getJsonString(root, "image", data);
  
   if (data.empty()) {
     rc = -4;
     sendResponse(rc, "image error", req, response);
     return;
   }
+  std::string tmp;
   int faceNum = 1;
-  getJsonString(root, "max_face_num", faceNum);
+  JsonUtil::getJsonString(root, "max_face_num", tmp);
+  if (!tmp.empty()) {
+    Util::convert(tmp, faceNum);
+  }
+  //getJsonInt(root, "max_face_num", faceNum);
   std::string faceType;
-  getJsonString(root, "face_type", faceType);
+  JsonUtil::getJsonString(root, "face_type", faceType);
   std::string decodeData;
   int decodeLen = 0;
   std::vector<unsigned char> cdata;

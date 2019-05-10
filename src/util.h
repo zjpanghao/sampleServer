@@ -2,6 +2,7 @@
 #define INCLUDE_RW_LOCK_H
 #include <glog/logging.h>
 #include <json/json.h>
+#include <type_traits>
 class LockMethod {
   public:
     virtual void lock(pthread_rwlock_t *lock) = 0;
@@ -43,16 +44,37 @@ class RWLockGuard {
     pthread_rwlock_t *lock_;
 };
 
-
-template<class E>
-void getJsonString(const Json::Value &value, const std::string &key, E &t) {
-  if (value.isNull() || !value[key].isString()) {
-    return;
-  }
-  
+class Util {
+ public:
+ template <class T, class U>
+ static void convert(const T &t, U &u) {
   std::stringstream ss;
-  ss << value[key].asString();
-  ss >> t;
+  ss << t;
+  ss >> u;
 }
+};
 
+class JsonUtil {
+  public:
+    static void getJsonInt(const Json::Value &value, const std::string &key, int &t) {
+      if (value.isNull() || !value[key].isInt()) {
+        return;
+      }
+      t = value[key].asInt();
+    }
+
+    static void getJsonDouble(const Json::Value &value, const std::string &key, double &t) {
+      if (value.isNull() || !value[key].isDouble()) {
+        return;
+      }
+      t = value[key].asDouble();
+    }
+
+    static void getJsonString(const Json::Value &value, const std::string &key, std::string &t) {
+      if (value.isNull() || !value[key].isString()) {
+        return;
+      }
+      t = value[key].asString();
+    }
+};
 #endif
