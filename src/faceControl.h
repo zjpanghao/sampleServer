@@ -11,6 +11,7 @@ class FaceControl : public GeneralControl {
    static void faceIdentifyCb(struct evhtp_request *req, void *arg);
    /*support image type  base64*/
    static void faceDetectCb(struct evhtp_request *req, void *arg);
+   static void faceUploadNewsCb(struct evhtp_request *req, void *arg);
 
    virtual std::vector<HttpControl> getMapping() override;
 };

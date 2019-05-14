@@ -20,6 +20,7 @@
 #include "db/dbpool.h"
 #include <memory>
 #include "faceControl.h"
+#include "predis/redis_pool.h"
 
 using kface::FaceService;
 extern void ev_server_start_multhread(const kunyan::Config &config, const std::vector<std::shared_ptr<kface::GeneralControl>> &controls);
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
   daemon(1, 0);
   initGlog(name);
   kunyan::Config config("config.ini");
+  initRedisPool(config);
   FaceService &service = FaceService::getFaceService();
   service.init(config);
   static std::vector<std::shared_ptr<kface::GeneralControl>> controls{std::make_shared<kface::FaceControl>()};

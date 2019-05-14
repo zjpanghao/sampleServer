@@ -90,12 +90,11 @@ void sendResponse(int errorCode,
   evhtp_send_reply(req, 200);
 }
 
-template<class vvalue>
 void sendResponseResult(int errorCode, 
     std::string msg,
-    const std::map<std::string, vvalue> &paraMap,
-    struct evhtp_request *&req, 
-    evbuffer *&response) {
+    const std::map<std::string, std::string> &paraMap,
+    struct evhtp_request *&req) {
+  evbuffer *response = req->buffer_out;
   Json::Value root;
   std::stringstream ss;
   ss << errorCode;
