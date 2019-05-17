@@ -1,5 +1,5 @@
 #include "faceRepo.h"
-namespace kface {
+namespace knews {
 
   News::FaceRepo::getLatestNews() {
     

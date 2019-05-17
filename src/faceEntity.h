@@ -1,6 +1,6 @@
 #ifndef INCLUDE_FACE_ENTITY_H
 #define INCLUDE_FACE_ENTITY_H
-namespace kface {
+namespace knews {
 struct NewsImage {
   int imageId;
   std::string head;

@@ -1,7 +1,7 @@
 #include "faceRepo.h"
 #include <glog/logging.h>
 
-namespace kface {
+namespace knews {
 FaceRepo::FaceRepo(std::shared_ptr<DBPool> pool):pool_(pool) {
 }
 
@@ -201,4 +201,4 @@ END:
   return rc;  
 }
 
-} // namespace kface
+} // namespace knews

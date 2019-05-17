@@ -17,13 +17,16 @@
 #include <sys/prctl.h>
 #include <signal.h>
 #include "faceService.h"
+#include "chatService.h"
 #include "db/dbpool.h"
 #include <memory>
 #include "faceControl.h"
+#include "chatControl.h"
 #include "predis/redis_pool.h"
 
-using kface::FaceService;
-extern void ev_server_start_multhread(const kunyan::Config &config, const std::vector<std::shared_ptr<kface::GeneralControl>> &controls);
+using knews::FaceService;
+using knews::ChatService;
+extern void ev_server_start_multhread(const kunyan::Config &config, const std::vector<std::shared_ptr<knews::GeneralControl>> &controls);
 
 static void initGlog(const std::string &name) {
   DIR *dir = opendir("log");
@@ -47,7 +50,10 @@ int main(int argc, char *argv[]) {
   initRedisPool(config);
   FaceService &service = FaceService::getFaceService();
   service.init(config);
-  static std::vector<std::shared_ptr<kface::GeneralControl>> controls{std::make_shared<kface::FaceControl>()};
+  ChatService &chatService = ChatService::getChatService();
+  chatService.init(config);
+  static std::vector<std::shared_ptr<knews::GeneralControl>> controls{std::make_shared<knews::FaceControl>()};
+  controls.push_back(std::make_shared<knews::ChatControl>());
   ev_server_start_multhread(config, controls); 
   while (1) {
     ::sleep(10000);

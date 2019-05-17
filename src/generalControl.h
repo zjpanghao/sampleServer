@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 #include "httpUtil.h"
-namespace kface {
+namespace knews {
 class GeneralControl {
  public:
   virtual std::vector<HttpControl> getMapping() = 0;

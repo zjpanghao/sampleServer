@@ -14,7 +14,7 @@
 
 class DBPool;
 class RedisPool;
-namespace kface {
+namespace knews {
 struct News;
 class FaceRepo;
 class FaceService {

@@ -8,7 +8,7 @@
 #include "faceConst.h"
 #include "faceRepo.h"
 #include "predis/redis_pool.h"
-namespace kface {
+namespace knews {
 FaceService& FaceService::getFaceService() {
   static FaceService faceService;
   return faceService;
@@ -35,11 +35,13 @@ std::shared_ptr<News> FaceService::getLatestNews() {
 }
 
 std::list<std::shared_ptr<News>> FaceService::getLatestNewsMore(int id, int size) {
+  
   RedisControlGuard guard(redisPool_);
   auto control = guard.GetControl();
   if (!control) {
-    return newsRepo_->getNewsInfoSmallThan(id, size);
+    return newsRepo_->getNewsSmallThan(id, size);
   }
+
 
   auto newsInfoList = newsRepo_->getNewsInfoSmallThan(id, size);
   std::stringstream ss;
@@ -49,11 +51,16 @@ std::list<std::shared_ptr<News>> FaceService::getLatestNewsMore(int id, int size
     ss.str("");
     ss << newsInfo->image.imageId;
     gettimeofday(&tv[0], NULL);
-    control->GetValue(ss.str(), &newsInfo->image.imageBase64);
+    std::string imageId;
+    ss >> imageId;
+    control->GetValue(imageId, &newsInfo->image.imageBase64);
+    newsInfo->image.imageBase64 = "";
     gettimeofday(&tv[1], NULL);
     if (newsInfo->image.imageBase64.length() == 0) {
+      LOG(INFO) << "load from db";
       newsRepo_->getImage(newsInfo->image.imageId, newsInfo->image.imageBase64);
-      control->SetExValue(ss.str(), 600, newsInfo->image.imageBase64);
+      control->SetExValue(imageId, 1200,  newsInfo->image.imageBase64);
+      //sleep(1);
     }
   }
   LOG(INFO) << tv[0].tv_sec << ":" << tv[0].tv_usec;

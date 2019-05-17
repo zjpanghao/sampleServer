@@ -5,7 +5,7 @@
 #include <string>
 #include "db/dbpool.h"
 #include "faceEntity.h"
-namespace kface {
+namespace knews {
 struct News;
 class FaceRepo {
  public:

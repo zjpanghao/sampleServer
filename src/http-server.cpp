@@ -81,7 +81,7 @@
 
 
 #define MAX_IMG_SIZE 1024*1024*50
-using namespace kface;
+using namespace knews;
 char uri_root[512];
 
 struct HttpParam {
@@ -94,8 +94,9 @@ void httpThread(void *param) {
   event_base_dispatch(base);
 }
 
-
+#ifdef EVHTP
 void server_evhtp_start_multhread(int port, 
+    int threadNum,
     int backLog, 
     const std::vector<std::shared_ptr<GeneralControl>> &controls) {
   evhtp_t           * htp;
@@ -108,11 +109,15 @@ void server_evhtp_start_multhread(int port,
       evhtp_set_cb(htp, control.url.c_str(), control.cb, NULL);
     }
   }
+  evhtp_enable_flag(htp, EVHTP_FLAG_ENABLE_ALL);
+#ifndef  EVHTP_DISABLE_EVTHR
+  evhtp_use_threads_wexit(htp, NULL, NULL, threadNum, NULL);
+#endif
   evhtp_bind_socket(htp, "0.0.0.0", port, backLog);
   event_base_loop(evbase, 0);
 }
 
-#if 0
+#else
 void server_start_multhread(int port, 
                                       int nThread, 
                                       const std::vector<std::shared_ptr<GeneralControl>> &controls) {
@@ -259,6 +264,9 @@ void ev_server_start_multhread(const kunyan::Config &config, const std::vector<s
     ss << threadConfig;
     ss >> threadNum;
   }
-  server_evhtp_start_multhread(port, 128, controls);
+#ifdef EVHTP
+#else
+  server_start_multhread(port, threadNum, controls);
+#endif
 }
 
