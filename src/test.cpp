@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <string>
 #include <stdio.h>
@@ -18,12 +19,14 @@
 #include <signal.h>
 #include "faceService.h"
 #include "detectService.h"
+#include "detectServiceCvImpl.h"
 #include "db/dbpool.h"
 #include <memory>
 #include "faceControl.h"
 
 using kface::FaceService;
 using kface::DetectService;
+using kface::DetectServiceCvImpl;
 extern void ev_server_start_multhread(const kunyan::Config &config, const std::vector<std::shared_ptr<kface::GeneralControl>> &controls);
 
 static void initGlog(const std::string &name) {
@@ -42,17 +45,16 @@ static void initGlog(const std::string &name) {
 
 int main(int argc, char *argv[]) {
   std::string name(argv[0]);
-  daemon(1, 0);
   initGlog(name);
   kunyan::Config config("config.ini");
-  FaceService &service = FaceService::getFaceService();
-  service.init(config);
-  DetectService &detectService = DetectService::getDetectService();
-  detectService.init(config);
-  static std::vector<std::shared_ptr<kface::GeneralControl>> controls{std::make_shared<kface::FaceControl>()};
-  ev_server_start_multhread(config, controls); 
-  while (1) {
-    ::sleep(10000);
+  std::unique_ptr<DetectService> service(new DetectServiceCvImpl());
+  service->init(config);
+  cv::Mat m = cv::imread(argv[1], 1);
+  std::vector<kface::ObjectDetectResult> results;
+  service->getDetectResult(m, results);
+  LOG(INFO) << results.size();
+  for (auto &result : results) {
+    LOG(INFO) << result.category << "," << result.score;
   }
   return 0;
 }

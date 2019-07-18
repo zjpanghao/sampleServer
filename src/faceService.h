@@ -10,6 +10,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "config/config.h"
+#include "track.h"
 
 class DBPool;
 namespace kface {
@@ -21,9 +22,16 @@ class FaceService {
   FaceService();
   void init(const kunyan::Config &config); 
   std::shared_ptr<News> getLatestNews();
+  std::string getLatestImage();
+  int trackStart();
+  int trackStop();
 
  private:
   std::shared_ptr<FaceRepo> newsRepo_;
+  std::shared_ptr<ktrack::Track> track_;
+  std::map<int, std::shared_ptr<ktrack::Track>> tracks_;
+  std::mutex lock_;
+  volatile bool start_{false};
 };
 }
 

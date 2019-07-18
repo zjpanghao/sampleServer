@@ -22,6 +22,7 @@ void sendResponseResult(int errorCode,
 struct HttpControl {
   std::string url;
   void (*cb)(evhttp_request *reg, void *arg);
+
 };
 
 #endif

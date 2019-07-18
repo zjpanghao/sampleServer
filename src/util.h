@@ -43,7 +43,6 @@ class RWLockGuard {
     pthread_rwlock_t *lock_;
 };
 
-
 template<class E>
 void getJsonString(const Json::Value &value, const std::string &key, E &t) {
   if (value.isNull() || !value[key].isString()) {
@@ -54,5 +53,6 @@ void getJsonString(const Json::Value &value, const std::string &key, E &t) {
   ss << value[key].asString();
   ss >> t;
 }
+void getJsonInt(const Json::Value &value, const std::string &key, int &t);
 
 #endif
