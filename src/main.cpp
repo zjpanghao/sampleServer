@@ -47,8 +47,6 @@ int main(int argc, char *argv[]) {
   kunyan::Config config("config.ini");
   FaceService &service = FaceService::getFaceService();
   service.init(config);
-  DetectService &detectService = DetectService::getDetectService();
-  detectService.init(config);
   static std::vector<std::shared_ptr<kface::GeneralControl>> controls{std::make_shared<kface::FaceControl>()};
   ev_server_start_multhread(config, controls); 
   while (1) {

@@ -14,6 +14,7 @@
 #include "detectService.h"
 #include "detectServiceCvImpl.h"
 #include "config/config.h"
+#include "apipool/apipool.h"
 
 
 namespace ktrack {
@@ -42,6 +43,7 @@ class Track : public KafkaConsumer {
    std::unique_ptr<kface::DetectService> detectService_;
    cv::Mat right_[2];
    cv::Mat error_[2];
+   ApiBuffer<kface::DetectService> detectBuffers_;
    volatile bool stop_{true};
 };
 
