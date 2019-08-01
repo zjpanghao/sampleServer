@@ -11,14 +11,7 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/imgcodecs.hpp"
 extern int gpu_index;
-namespace kface {
-DetectService& DetectService::getDetectService() {
-  static DetectService detectService;
-  return detectService;
-}
-
-DetectService::DetectService() {
-}
+namespace ktrack {
 
 int DetectService::init(const kunyan::Config &config) {
   LOG(INFO) << "init detect service";

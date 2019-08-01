@@ -9,10 +9,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/imgcodecs.hpp"
-namespace kface {
-
-DetectServiceCvImpl::DetectServiceCvImpl() {
-}
+namespace ktrack {
 
 int DetectServiceCvImpl::init(const kunyan::Config &config) {
   LOG(INFO) << "init detect service";

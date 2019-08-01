@@ -14,23 +14,17 @@
 #include "config/config.h"
 #include <opencv2/core.hpp>
 #include <opencv2/dnn.hpp>
-struct network;
-namespace kface {
+
+namespace ktrack {
 class DetectServiceCvImpl : public DetectService {
  public:
-  //static DetectService& getDetectService();
   virtual int init(const kunyan::Config &config) override;
-  virtual int getDetectResult(const cv::Mat &m, std::vector<ObjectDetectResult> &result) override;
-  DetectServiceCvImpl();
+  virtual int getDetectResult(const cv::Mat &m, 
+                                     std::vector<ObjectDetectResult> &result) override;
  private:
   cv::dnn::Net net_;
-  //network *net_;
-  //list *options_;
-  //char *name_list_;
-  //char **names_;
-
 };
 
-}
+} // namespace kface
 
 #endif

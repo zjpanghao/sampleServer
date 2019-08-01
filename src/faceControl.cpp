@@ -41,9 +41,30 @@
 
 namespace kface {
 void FaceControl::trackImageCb(struct evhttp_request *req, void *arg) {
+  int rc = 0;
+  Json::Value root;
+  Json::Reader reader;
+   evbuffer *response = evbuffer_new();
+  if (evhttp_request_get_command(req) != EVHTTP_REQ_POST) {
+    rc = -1;
+    sendResponse(rc, "method not support", req, response);
+    return;
+  }
+  std::string body = getBodyStr(req);
+  if (!reader.parse(body, root)) {
+    rc = -3;
+    sendResponse(rc, "parse error", req, response);
+    return;
+  }
+  int caseId = -1;
+  getJsonInt(root, "caseId", caseId);
+  if (caseId == -1) {
+    rc = -4;
+    sendResponse(rc, "caseId error", req, response);
+    return;
+  }
   FaceService &service = FaceService::getFaceService(); 
-  evbuffer *response = evbuffer_new();
-  std::string image = service.getLatestImage();
+  std::string image = service.getLatestImage(caseId);
   evbuffer_add_printf(response, "%s", image.c_str());
   evhttp_send_reply(req, 200, "OK", response);
 }

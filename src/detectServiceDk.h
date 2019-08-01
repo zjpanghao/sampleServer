@@ -12,7 +12,7 @@
 #include "config/config.h"
 #include <opencv2/core.hpp>
 struct network;
-namespace kface {
+namespace ktrack {
 class DetectService {
  public:
   static DetectService& getDetectService();

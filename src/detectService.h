@@ -11,20 +11,14 @@
 #include "faceEntity.h"
 #include "config/config.h"
 #include <opencv2/core.hpp>
-struct network;
-namespace kface {
+namespace ktrack {
 class DetectService {
  public:
-  static DetectService& getDetectService();
-  virtual int init(const kunyan::Config &config);
-  virtual int getDetectResult(const cv::Mat &m, std::vector<ObjectDetectResult> &result);
-  DetectService();
+  virtual int init(const kunyan::Config &config) = 0;
+  virtual int getDetectResult(const cv::Mat &m, 
+                                     std::vector<ObjectDetectResult> &result) = 0;
+  virtual ~DetectService() = default;
  private:
-  network *net_;
-  //list *options_;
-  //char *name_list_;
-  char **names_;
-
 };
 
 }

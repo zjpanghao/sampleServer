@@ -14,21 +14,29 @@
 #include "detectService.h"
 #include "detectServiceCvImpl.h"
 #include "config/config.h"
-#include "apipool/apipool.h"
-
+#include "apipool/apiPool.h"
 
 namespace ktrack {
 class Track : public KafkaConsumer {
  public:
-   Track();
+   Track(ApiBuffer<DetectServiceCvImpl> &detectApiBuffers,
+           ApiBuffer<FaceApi> &faceApiBuffers);
    ~Track();
-   int init(const kunyan::Config &config);
+   int init(const std::string &kafkaServer,
+              const std::string &topic,
+              const std::string &group);
    void ProcessMessage(const char *buf, int len) override;
    bool initClient();
    bool initPersonClient();
    cv::Mat getLatestImage();
 
  private:
+   void filterPersons(std::vector<ObjectDetectResult> &persons, 
+                            int maxWidth, int maxHeight);
+   bool rectValid(const ObjectDetectResult &object, 
+                      int maxWidth, int maxHeight);
+   bool getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int maxHeight, cv::Rect &rect);
+   int checkHelmet(const cv::Mat &detectImage);
    int errorConnectCount_{0};
    long errorTime_{0};
    int errorPersonConnectCount_{0};
@@ -37,13 +45,14 @@ class Track : public KafkaConsumer {
    cv::Mat image_;
    cv::Rect2d move_;
    std::mutex lock_;
-   FaceApi  faceApi_;
+   //FaceApi  faceApi_;
    std::shared_ptr<HelmetClient> client_;
    std::shared_ptr<PersonSearchClient> personClient_;
-   std::unique_ptr<kface::DetectService> detectService_;
+  // std::unique_ptr<kface::DetectService> detectService_;
    cv::Mat right_[2];
    cv::Mat error_[2];
-   ApiBuffer<kface::DetectService> detectBuffers_;
+   ApiBuffer<DetectServiceCvImpl> &detectBuffers_;
+   ApiBuffer<FaceApi> &faceBuffers_;
    volatile bool stop_{true};
 };
 

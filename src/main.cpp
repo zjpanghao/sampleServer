@@ -23,7 +23,7 @@
 #include "faceControl.h"
 
 using kface::FaceService;
-using kface::DetectService;
+using ktrack::DetectService;
 extern void ev_server_start_multhread(const kunyan::Config &config, const std::vector<std::shared_ptr<kface::GeneralControl>> &controls);
 
 static void initGlog(const std::string &name) {
