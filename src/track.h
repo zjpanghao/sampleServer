@@ -15,6 +15,7 @@
 #include "detectServiceCvImpl.h"
 #include "config/config.h"
 #include "apipool/apiPool.h"
+#include "threadpool/thread_pool.h"
 
 namespace ktrack {
 class Track : public KafkaConsumer {
@@ -22,7 +23,8 @@ class Track : public KafkaConsumer {
    Track(ApiBuffer<DetectServiceCvImpl> &detectApiBuffers,
            ApiBuffer<FaceApi> &faceApiBuffers);
    ~Track();
-   int init(const std::string &kafkaServer,
+   int init(std::shared_ptr<ExecutorService> executorService,
+            const std::string &kafkaServer,
               const std::string &topic,
               const std::string &group);
    void ProcessMessage(const char *buf, int len) override;
@@ -36,7 +38,7 @@ class Track : public KafkaConsumer {
    bool rectValid(const ObjectDetectResult &object, 
                       int maxWidth, int maxHeight);
    bool getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int maxHeight, cv::Rect &rect);
-   int checkHelmet(const cv::Mat &detectImage);
+   int checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result);
    int errorConnectCount_{0};
    long errorTime_{0};
    int errorPersonConnectCount_{0};
@@ -47,12 +49,12 @@ class Track : public KafkaConsumer {
    std::mutex lock_;
    //FaceApi  faceApi_;
    std::shared_ptr<HelmetClient> client_;
-   std::shared_ptr<PersonSearchClient> personClient_;
   // std::unique_ptr<kface::DetectService> detectService_;
    cv::Mat right_[2];
    cv::Mat error_[2];
    ApiBuffer<DetectServiceCvImpl> &detectBuffers_;
    ApiBuffer<FaceApi> &faceBuffers_;
+   std::shared_ptr<ExecutorService> executorService_;
    volatile bool stop_{true};
 };
 

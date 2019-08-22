@@ -22,7 +22,7 @@
 class HelmetIf {
  public:
   virtual ~HelmetIf() {}
-  virtual int32_t checkHelmet(const std::string& image) = 0;
+  virtual void checkHelmet(HelmetCheckResult& _return, const std::string& image) = 0;
 };
 
 class HelmetIfFactory {
@@ -52,9 +52,8 @@ class HelmetIfSingletonFactory : virtual public HelmetIfFactory {
 class HelmetNull : virtual public HelmetIf {
  public:
   virtual ~HelmetNull() {}
-  int32_t checkHelmet(const std::string& /* image */) {
-    int32_t _return = 0;
-    return _return;
+  void checkHelmet(HelmetCheckResult& /* _return */, const std::string& /* image */) {
+    return;
   }
 };
 
@@ -117,15 +116,15 @@ class Helmet_checkHelmet_result {
 
   Helmet_checkHelmet_result(const Helmet_checkHelmet_result&);
   Helmet_checkHelmet_result& operator=(const Helmet_checkHelmet_result&);
-  Helmet_checkHelmet_result() : success(0) {
+  Helmet_checkHelmet_result() {
   }
 
   virtual ~Helmet_checkHelmet_result() noexcept;
-  int32_t success;
+  HelmetCheckResult success;
 
   _Helmet_checkHelmet_result__isset __isset;
 
-  void __set_success(const int32_t val);
+  void __set_success(const HelmetCheckResult& val);
 
   bool operator == (const Helmet_checkHelmet_result & rhs) const
   {
@@ -154,7 +153,7 @@ class Helmet_checkHelmet_presult {
 
 
   virtual ~Helmet_checkHelmet_presult() noexcept;
-  int32_t* success;
+  HelmetCheckResult* success;
 
   _Helmet_checkHelmet_presult__isset __isset;
 
@@ -187,9 +186,9 @@ class HelmetClient : virtual public HelmetIf {
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> getOutputProtocol() {
     return poprot_;
   }
-  int32_t checkHelmet(const std::string& image);
+  void checkHelmet(HelmetCheckResult& _return, const std::string& image);
   void send_checkHelmet(const std::string& image);
-  int32_t recv_checkHelmet();
+  void recv_checkHelmet(HelmetCheckResult& _return);
  protected:
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> piprot_;
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> poprot_;
@@ -238,13 +237,14 @@ class HelmetMultiface : virtual public HelmetIf {
     ifaces_.push_back(iface);
   }
  public:
-  int32_t checkHelmet(const std::string& image) {
+  void checkHelmet(HelmetCheckResult& _return, const std::string& image) {
     size_t sz = ifaces_.size();
     size_t i = 0;
     for (; i < (sz - 1); ++i) {
-      ifaces_[i]->checkHelmet(image);
+      ifaces_[i]->checkHelmet(_return, image);
     }
-    return ifaces_[i]->checkHelmet(image);
+    ifaces_[i]->checkHelmet(_return, image);
+    return;
   }
 
 };
@@ -279,9 +279,9 @@ class HelmetConcurrentClient : virtual public HelmetIf {
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> getOutputProtocol() {
     return poprot_;
   }
-  int32_t checkHelmet(const std::string& image);
+  void checkHelmet(HelmetCheckResult& _return, const std::string& image);
   int32_t send_checkHelmet(const std::string& image);
-  int32_t recv_checkHelmet(const int32_t seqid);
+  void recv_checkHelmet(HelmetCheckResult& _return, const int32_t seqid);
  protected:
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> piprot_;
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> poprot_;

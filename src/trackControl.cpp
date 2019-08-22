@@ -31,6 +31,7 @@ int TrackControl::init() {
   ss >> faceNums;
   detectBuffers_.init(detectNums, config_);
   faceBuffers_.init(faceNums);
+  //executorService_ = std::make_shared<ExecutorService>(10);
   int rc = Init(config_.get("kafka", "server"),
                 config_.get("kafka", "topic"), 
                 config_.get("kafka", "group")
@@ -66,14 +67,14 @@ void TrackControl::ProcessMessage(const char *buf, int len) {
   if (caseId == -1) {
     LOG(ERROR) << "error recv command message, no caseId found";
   }
-  if (trackMp_.count(caseId) == 0) {
+  if (trackMp_.count(caseId) > 0) {
     return;
   }
   std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, faceBuffers_);
   std::string server = config_.get("kafka", "server");
   std::stringstream ss;
   ss << "face_" << caseId;
-  if (0 != track->init(server, ss.str(), "group_face")) {
+  if (0 != track->init(executorService_, server, ss.str(), "group_face")) {
     LOG(ERROR) << "track start error!";
     return;
   }

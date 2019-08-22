@@ -27,9 +27,6 @@ Track::~Track() {
   if (client_ != nullptr) {
     client_->getInputProtocol()->getTransport()->close();
   }
-  if (personClient_ != nullptr) {
-    personClient_->getInputProtocol()->getTransport()->close();
-  }
   stop();
   LOG(INFO) << "track task exit";
 }
@@ -48,10 +45,12 @@ bool Track::initClient() {
   return true;
 }
 
-int Track::init(const std::string &kafkaServer,
+int Track::init(std::shared_ptr<ExecutorService> executorService,
+                const std::string &kafkaServer,
                   const std::string &topic,
                   const std::string &group
                   ) {
+  executorService_ = executorService;
   int rc = Init(kafkaServer, topic, group);
   if (rc == 0) {
     rc |= StartAll();
@@ -146,13 +145,13 @@ bool Track::rectValid(const ObjectDetectResult &object, int maxWidth, int maxHei
   return true;
 }
 
-int Track::checkHelmet(const cv::Mat &detectImage) {
+int Track::checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result) {
   std::vector<unsigned char> faceImageData;
   cv::imencode(".jpg", detectImage, faceImageData);
   std::string imageBase64;
   Base64::getBase64().encode(faceImageData, imageBase64);
-  int rc = -1;
   bool status = true;
+  int rc = -1;
   try {
     if (errorConnectCount_ >= 1 && time(NULL) > errorTime_ + 3) {
       status = initClient();
@@ -160,9 +159,9 @@ int Track::checkHelmet(const cv::Mat &detectImage) {
       errorTime_ = time(NULL);
     }
     if (status) {
-      rc = client_->checkHelmet(imageBase64);
+      client_->checkHelmet(result, imageBase64);
+      rc = 0;
     }
-    LOG(INFO) << "recv " << rc;
     errorConnectCount_ = 0;
     } catch (::apache::thrift::transport::TTransportException &e) {
       LOG(ERROR) << "transport exception:" << e.what();
@@ -170,18 +169,18 @@ int Track::checkHelmet(const cv::Mat &detectImage) {
       if (errorConnectCount_ == 1) {
         errorTime_ = time(NULL);
       }
-      rc = -1;
     } catch (::apache::thrift::TApplicationException &e) {
       LOG(ERROR) << "check helemt exception" << e.what();
       rc = -1;
     } catch (std::exception &e) {
       LOG(ERROR) << "check helemt std::exception" << e.what();
-      rc = -1;
+      rc = -2;
     } 
     return rc;
 }
 
 void Track::ProcessMessage(const char *buf, int len) {
+  LOG(INFO) << "recv len:" << len << " tid:" << std::this_thread::get_id();
   std::string recv(buf, len);
   Json::Value root;
   Json::Reader reader;
@@ -190,11 +189,13 @@ void Track::ProcessMessage(const char *buf, int len) {
     return;
   }
   std::string image = root["image"].asString();
+  std::string dateTime = root["dateTime"].asString();
+  LOG(INFO) << "dateTime:" << dateTime;
   std::vector<unsigned char> data;
   Base64::getBase64().decode(image, data);
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
-  cv::Mat m(mo, cv::Rect(mo.cols / 3, 0, mo.cols * 2 / 3 , mo.rows));
-  m = m.clone();
+  //cv::Mat m(mo, cv::Rect(mo.cols / 3, 0, mo.cols * 2 / 3 , mo.rows));
+  cv::Mat m = mo;//.clone();
   std::vector<ObjectDetectResult> objects;
   {
     ApiWrapper<DetectServiceCvImpl> api(detectBuffers_);
@@ -242,55 +243,25 @@ void Track::ProcessMessage(const char *buf, int len) {
     }
 #endif
 
-#if 0
-    std::vector<unsigned char> faceImageData;
-    cv::imencode(".jpg", faceImage, faceImageData);
-    std::string imageBase64;
-    Base64::getBase64().encode(faceImageData, imageBase64);
-    int rc = -1;
-    bool status = true;
-    try {
-      if (errorConnectCount_ >= 1 && time(NULL) > errorTime_ + 3) {
-        status = initClient();
-        errorConnectCount_ = 0;
-        errorTime_ = time(NULL);
-      }
-      if (status) {
-        rc = client_->checkHelmet(imageBase64);
-      }
-      LOG(INFO) << "recv " << rc;
-      errorConnectCount_ = 0;
-    } catch (::apache::thrift::transport::TTransportException &e) {
-      LOG(ERROR) << "transport exception:" << e.what();
-      errorConnectCount_++;
-      if (errorConnectCount_ == 1) {
-        errorTime_ = time(NULL);
-      }
-      rc = -1;
-    } catch (::apache::thrift::TApplicationException &e) {
-      LOG(ERROR) << "check helemt exception" << e.what();
-      rc = -1;
-    } catch (std::exception &e) {
-      LOG(ERROR) << "check helemt std::exception" << e.what();
-      rc = -1;
-    } 
-    #endif
-    int rc = checkHelmet(faceImage);
+    HelmetCheckResult checkResult;
+    int ret = checkHelmet(faceImage, checkResult);
+    LOG(INFO) << "checkhelmet:" << ret;
     static cv::Scalar  RED(0, 0, 255);
     static cv::Scalar  GREEN(0, 255, 0);
     static cv::Scalar BLUE(255, 0, 0);
+    static cv::Scalar WHITE(255, 255, 255);
+    cv::Scalar *colors[] = {&RED, &GREEN, &BLUE, &WHITE};
     cv::Scalar  &scalar = BLUE;
     
-    if (rc > 0 ) {
-      scalar = (errorRc(rc)) ? RED :GREEN;
+    if (ret == 0 && checkResult.errorCode == 0) {
+      int rc = checkResult.index;
+      scalar = *colors[rc];
       cv::Mat &alert = (errorRc(rc)) ? error_[0] : right_[0];
       cv::Mat &alertMask = (errorRc(rc)) ? error_[1] : right_[1];
       cv::Rect alertBox(box.x, box.y - alert.rows < 0 ? 0 : box.y - alert.rows, 
           alert.cols,  alert.rows);
       cv::Mat alertImage(showImage, alertBox);
       alert.copyTo(alertImage, alertMask);
-    }
-    if (rc != -2) {
       cv::rectangle(showImage, box, scalar, 2, 1);
     }
   }

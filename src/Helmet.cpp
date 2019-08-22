@@ -114,8 +114,8 @@ uint32_t Helmet_checkHelmet_result::read(::apache::thrift::protocol::TProtocol* 
     switch (fid)
     {
       case 0:
-        if (ftype == ::apache::thrift::protocol::T_I32) {
-          xfer += iprot->readI32(this->success);
+        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
+          xfer += this->success.read(iprot);
           this->__isset.success = true;
         } else {
           xfer += iprot->skip(ftype);
@@ -140,8 +140,8 @@ uint32_t Helmet_checkHelmet_result::write(::apache::thrift::protocol::TProtocol*
   xfer += oprot->writeStructBegin("Helmet_checkHelmet_result");
 
   if (this->__isset.success) {
-    xfer += oprot->writeFieldBegin("success", ::apache::thrift::protocol::T_I32, 0);
-    xfer += oprot->writeI32(this->success);
+    xfer += oprot->writeFieldBegin("success", ::apache::thrift::protocol::T_STRUCT, 0);
+    xfer += this->success.write(oprot);
     xfer += oprot->writeFieldEnd();
   }
   xfer += oprot->writeFieldStop();
@@ -176,8 +176,8 @@ uint32_t Helmet_checkHelmet_presult::read(::apache::thrift::protocol::TProtocol*
     switch (fid)
     {
       case 0:
-        if (ftype == ::apache::thrift::protocol::T_I32) {
-          xfer += iprot->readI32((*(this->success)));
+        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
+          xfer += (*(this->success)).read(iprot);
           this->__isset.success = true;
         } else {
           xfer += iprot->skip(ftype);
@@ -195,10 +195,10 @@ uint32_t Helmet_checkHelmet_presult::read(::apache::thrift::protocol::TProtocol*
   return xfer;
 }
 
-int32_t HelmetClient::checkHelmet(const std::string& image)
+void HelmetClient::checkHelmet(HelmetCheckResult& _return, const std::string& image)
 {
   send_checkHelmet(image);
-  return recv_checkHelmet();
+  recv_checkHelmet(_return);
 }
 
 void HelmetClient::send_checkHelmet(const std::string& image)
@@ -215,7 +215,7 @@ void HelmetClient::send_checkHelmet(const std::string& image)
   oprot_->getTransport()->flush();
 }
 
-int32_t HelmetClient::recv_checkHelmet()
+void HelmetClient::recv_checkHelmet(HelmetCheckResult& _return)
 {
 
   int32_t rseqid = 0;
@@ -240,7 +240,6 @@ int32_t HelmetClient::recv_checkHelmet()
     iprot_->readMessageEnd();
     iprot_->getTransport()->readEnd();
   }
-  int32_t _return;
   Helmet_checkHelmet_presult result;
   result.success = &_return;
   result.read(iprot_);
@@ -248,7 +247,8 @@ int32_t HelmetClient::recv_checkHelmet()
   iprot_->getTransport()->readEnd();
 
   if (result.__isset.success) {
-    return _return;
+    // _return pointer has now been filled
+    return;
   }
   throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "checkHelmet failed: unknown result");
 }
@@ -295,7 +295,7 @@ void HelmetProcessor::process_checkHelmet(int32_t seqid, ::apache::thrift::proto
 
   Helmet_checkHelmet_result result;
   try {
-    result.success = iface_->checkHelmet(args.image);
+    iface_->checkHelmet(result.success, args.image);
     result.__isset.success = true;
   } catch (const std::exception& e) {
     if (this->eventHandler_.get() != NULL) {
@@ -333,10 +333,10 @@ void HelmetProcessor::process_checkHelmet(int32_t seqid, ::apache::thrift::proto
   return processor;
 }
 
-int32_t HelmetConcurrentClient::checkHelmet(const std::string& image)
+void HelmetConcurrentClient::checkHelmet(HelmetCheckResult& _return, const std::string& image)
 {
   int32_t seqid = send_checkHelmet(image);
-  return recv_checkHelmet(seqid);
+  recv_checkHelmet(_return, seqid);
 }
 
 int32_t HelmetConcurrentClient::send_checkHelmet(const std::string& image)
@@ -357,7 +357,7 @@ int32_t HelmetConcurrentClient::send_checkHelmet(const std::string& image)
   return cseqid;
 }
 
-int32_t HelmetConcurrentClient::recv_checkHelmet(const int32_t seqid)
+void HelmetConcurrentClient::recv_checkHelmet(HelmetCheckResult& _return, const int32_t seqid)
 {
 
   int32_t rseqid = 0;
@@ -395,7 +395,6 @@ int32_t HelmetConcurrentClient::recv_checkHelmet(const int32_t seqid)
         using ::apache::thrift::protocol::TProtocolException;
         throw TProtocolException(TProtocolException::INVALID_DATA);
       }
-      int32_t _return;
       Helmet_checkHelmet_presult result;
       result.success = &_return;
       result.read(iprot_);
@@ -403,8 +402,9 @@ int32_t HelmetConcurrentClient::recv_checkHelmet(const int32_t seqid)
       iprot_->getTransport()->readEnd();
 
       if (result.__isset.success) {
+        // _return pointer has now been filled
         sentry.commit();
-        return _return;
+        return;
       }
       // in a bad state, don't commit
       throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "checkHelmet failed: unknown result");

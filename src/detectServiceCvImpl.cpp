@@ -75,7 +75,6 @@ int DetectServiceCvImpl::getDetectResult(const cv::Mat &m,
         double centerY = detection[1];
         double width = detection[2];
         double height = detection[3];
-        LOG(INFO) << "class:" << maxLoc.x;
         classIds.push_back(maxLoc.x);
         confidences.push_back((float)confidence);
         ObjectDetectResult result;

@@ -16,6 +16,7 @@
 #include "config/config.h"
 #include "apipool/apiPool.h"
 #include "track.h"
+#include "threadpool/thread_pool.h"
 
 namespace ktrack {
 class TrackControl : public KafkaConsumer {
@@ -32,6 +33,7 @@ class TrackControl : public KafkaConsumer {
    std::mutex lock_;
    ApiBuffer<DetectServiceCvImpl> detectBuffers_;
    ApiBuffer<FaceApi> faceBuffers_;
+   std::shared_ptr<ExecutorService> executorService_{nullptr};
    static constexpr int DETECT_BUFFER_NUM{3};
    static constexpr int FACE_BUFFER_NUM{3};
 };

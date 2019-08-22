@@ -18,7 +18,7 @@ class HelmetHandler : virtual public HelmetIf {
     // Your initialization goes here
   }
 
-  int32_t checkHelmet(const std::string& image) {
+  void checkHelmet(HelmetCheckResult& _return, const std::string& image) {
     // Your implementation goes here
     printf("checkHelmet\n");
   }

@@ -14,3 +14,155 @@
 
 
 
+HelmetCheckResult::~HelmetCheckResult() noexcept {
+}
+
+
+void HelmetCheckResult::__set_errorCode(const int32_t val) {
+  this->errorCode = val;
+}
+
+void HelmetCheckResult::__set_index(const int32_t val) {
+  this->index = val;
+}
+
+void HelmetCheckResult::__set_name(const std::string& val) {
+  this->name = val;
+}
+
+void HelmetCheckResult::__set_score(const double val) {
+  this->score = val;
+}
+std::ostream& operator<<(std::ostream& out, const HelmetCheckResult& obj)
+{
+  obj.printTo(out);
+  return out;
+}
+
+
+uint32_t HelmetCheckResult::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 1:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->errorCode);
+          this->__isset.errorCode = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 2:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->index);
+          this->__isset.index = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 3:
+        if (ftype == ::apache::thrift::protocol::T_STRING) {
+          xfer += iprot->readString(this->name);
+          this->__isset.name = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 4:
+        if (ftype == ::apache::thrift::protocol::T_DOUBLE) {
+          xfer += iprot->readDouble(this->score);
+          this->__isset.score = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t HelmetCheckResult::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  ::apache::thrift::protocol::TOutputRecursionTracker tracker(*oprot);
+  xfer += oprot->writeStructBegin("HelmetCheckResult");
+
+  xfer += oprot->writeFieldBegin("errorCode", ::apache::thrift::protocol::T_I32, 1);
+  xfer += oprot->writeI32(this->errorCode);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("index", ::apache::thrift::protocol::T_I32, 2);
+  xfer += oprot->writeI32(this->index);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("name", ::apache::thrift::protocol::T_STRING, 3);
+  xfer += oprot->writeString(this->name);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("score", ::apache::thrift::protocol::T_DOUBLE, 4);
+  xfer += oprot->writeDouble(this->score);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+void swap(HelmetCheckResult &a, HelmetCheckResult &b) {
+  using ::std::swap;
+  swap(a.errorCode, b.errorCode);
+  swap(a.index, b.index);
+  swap(a.name, b.name);
+  swap(a.score, b.score);
+  swap(a.__isset, b.__isset);
+}
+
+HelmetCheckResult::HelmetCheckResult(const HelmetCheckResult& other0) {
+  errorCode = other0.errorCode;
+  index = other0.index;
+  name = other0.name;
+  score = other0.score;
+  __isset = other0.__isset;
+}
+HelmetCheckResult& HelmetCheckResult::operator=(const HelmetCheckResult& other1) {
+  errorCode = other1.errorCode;
+  index = other1.index;
+  name = other1.name;
+  score = other1.score;
+  __isset = other1.__isset;
+  return *this;
+}
+void HelmetCheckResult::printTo(std::ostream& out) const {
+  using ::apache::thrift::to_string;
+  out << "HelmetCheckResult(";
+  out << "errorCode=" << to_string(errorCode);
+  out << ", " << "index=" << to_string(index);
+  out << ", " << "name=" << to_string(name);
+  out << ", " << "score=" << to_string(score);
+  out << ")";
+}
+
+
