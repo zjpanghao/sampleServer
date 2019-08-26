@@ -23,6 +23,7 @@ class HelmetIf {
  public:
   virtual ~HelmetIf() {}
   virtual void checkHelmet(HelmetCheckResult& _return, const std::string& image) = 0;
+  virtual void pingHelmet() = 0;
 };
 
 class HelmetIfFactory {
@@ -53,6 +54,9 @@ class HelmetNull : virtual public HelmetIf {
  public:
   virtual ~HelmetNull() {}
   void checkHelmet(HelmetCheckResult& /* _return */, const std::string& /* image */) {
+    return;
+  }
+  void pingHelmet() {
     return;
   }
 };
@@ -161,6 +165,80 @@ class Helmet_checkHelmet_presult {
 
 };
 
+
+class Helmet_pingHelmet_args {
+ public:
+
+  Helmet_pingHelmet_args(const Helmet_pingHelmet_args&);
+  Helmet_pingHelmet_args& operator=(const Helmet_pingHelmet_args&);
+  Helmet_pingHelmet_args() {
+  }
+
+  virtual ~Helmet_pingHelmet_args() noexcept;
+
+  bool operator == (const Helmet_pingHelmet_args & /* rhs */) const
+  {
+    return true;
+  }
+  bool operator != (const Helmet_pingHelmet_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const Helmet_pingHelmet_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class Helmet_pingHelmet_pargs {
+ public:
+
+
+  virtual ~Helmet_pingHelmet_pargs() noexcept;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class Helmet_pingHelmet_result {
+ public:
+
+  Helmet_pingHelmet_result(const Helmet_pingHelmet_result&);
+  Helmet_pingHelmet_result& operator=(const Helmet_pingHelmet_result&);
+  Helmet_pingHelmet_result() {
+  }
+
+  virtual ~Helmet_pingHelmet_result() noexcept;
+
+  bool operator == (const Helmet_pingHelmet_result & /* rhs */) const
+  {
+    return true;
+  }
+  bool operator != (const Helmet_pingHelmet_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const Helmet_pingHelmet_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class Helmet_pingHelmet_presult {
+ public:
+
+
+  virtual ~Helmet_pingHelmet_presult() noexcept;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
 class HelmetClient : virtual public HelmetIf {
  public:
   HelmetClient(std::shared_ptr< ::apache::thrift::protocol::TProtocol> prot) {
@@ -189,6 +267,9 @@ class HelmetClient : virtual public HelmetIf {
   void checkHelmet(HelmetCheckResult& _return, const std::string& image);
   void send_checkHelmet(const std::string& image);
   void recv_checkHelmet(HelmetCheckResult& _return);
+  void pingHelmet();
+  void send_pingHelmet();
+  void recv_pingHelmet();
  protected:
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> piprot_;
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> poprot_;
@@ -205,10 +286,12 @@ class HelmetProcessor : public ::apache::thrift::TDispatchProcessor {
   typedef std::map<std::string, ProcessFunction> ProcessMap;
   ProcessMap processMap_;
   void process_checkHelmet(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_pingHelmet(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
  public:
   HelmetProcessor(::std::shared_ptr<HelmetIf> iface) :
     iface_(iface) {
     processMap_["checkHelmet"] = &HelmetProcessor::process_checkHelmet;
+    processMap_["pingHelmet"] = &HelmetProcessor::process_pingHelmet;
   }
 
   virtual ~HelmetProcessor() {}
@@ -247,6 +330,15 @@ class HelmetMultiface : virtual public HelmetIf {
     return;
   }
 
+  void pingHelmet() {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->pingHelmet();
+    }
+    ifaces_[i]->pingHelmet();
+  }
+
 };
 
 // The 'concurrent' client is a thread safe client that correctly handles
@@ -282,6 +374,9 @@ class HelmetConcurrentClient : virtual public HelmetIf {
   void checkHelmet(HelmetCheckResult& _return, const std::string& image);
   int32_t send_checkHelmet(const std::string& image);
   void recv_checkHelmet(HelmetCheckResult& _return, const int32_t seqid);
+  void pingHelmet();
+  int32_t send_pingHelmet();
+  void recv_pingHelmet(const int32_t seqid);
  protected:
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> piprot_;
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> poprot_;

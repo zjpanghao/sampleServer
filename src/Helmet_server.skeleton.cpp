@@ -23,6 +23,11 @@ class HelmetHandler : virtual public HelmetIf {
     printf("checkHelmet\n");
   }
 
+  void pingHelmet() {
+    // Your implementation goes here
+    printf("pingHelmet\n");
+  }
+
 };
 
 int main(int argc, char **argv) {

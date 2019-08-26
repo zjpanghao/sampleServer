@@ -8,6 +8,7 @@
 #include "detectService.h"
 #include "detectServiceCvImpl.h"
 #include "util.h"
+#include "Helmet.h"
 
 namespace ktrack {
 TrackControl::TrackControl(const kunyan::Config &config) : config_(config) {
@@ -31,7 +32,16 @@ int TrackControl::init() {
   ss >> faceNums;
   detectBuffers_.init(detectNums, config_);
   faceBuffers_.init(faceNums);
-  //executorService_ = std::make_shared<ExecutorService>(10);
+
+  int helmetNumbers = 1;
+  ss.clear();
+  ss.str("");
+  ss << config_.get("helmet", "num");
+  ss >> helmetNumbers;
+
+
+  helmetClients_.init(helmetNumbers, config_);
+  executorService_ = std::make_shared<ExecutorService>(helmetNumbers);
   int rc = Init(config_.get("kafka", "server"),
                 config_.get("kafka", "topic"), 
                 config_.get("kafka", "group")
@@ -70,7 +80,7 @@ void TrackControl::ProcessMessage(const char *buf, int len) {
   if (trackMp_.count(caseId) > 0) {
     return;
   }
-  std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, faceBuffers_);
+  std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, faceBuffers_, helmetClients_);
   std::string server = config_.get("kafka", "server");
   std::stringstream ss;
   ss << "face_" << caseId;

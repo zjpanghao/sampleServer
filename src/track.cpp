@@ -7,6 +7,7 @@
 #include "faceEntity.h"
 #include "detectService.h"
 #include "detectServiceCvImpl.h"
+#include "helmetTask.h"
 
 using  apache::thrift::protocol::TProtocol;
 using  apache::thrift::protocol::TBinaryProtocol;
@@ -19,30 +20,13 @@ using  apache::thrift::transport::TBufferedTransport;
 #define BORDER_WIDTH 150
 namespace ktrack {
 Track::Track(ApiBuffer<DetectServiceCvImpl> &apiBuffers,
-    ApiBuffer<FaceApi> &faceBuffers) 
-    : detectBuffers_(apiBuffers), faceBuffers_(faceBuffers) {
+    ApiBuffer<FaceApi> &faceBuffers, ApiBuffer<HelmetClientDelegation> &clients) 
+    : detectBuffers_(apiBuffers), faceBuffers_(faceBuffers), clients_(clients), videoInfo_(std::make_shared<VideoInfo>()) {
 }
 
 Track::~Track() {
-  if (client_ != nullptr) {
-    client_->getInputProtocol()->getTransport()->close();
-  }
   stop();
   LOG(INFO) << "track task exit";
-}
-
-bool Track::initClient() {
-  std::shared_ptr<TTransport> socket(new TSocket("localhost", 9090));
-  std::shared_ptr<TTransport> transport(new TBufferedTransport(socket));
-  std::shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
-  client_ = std::make_shared<HelmetClient>(protocol);
-  try {
-    transport->open();
-  } catch (TTransportException &e) {
-    LOG(ERROR) << e.what();
-    return false;
-  }
-  return true;
 }
 
 int Track::init(std::shared_ptr<ExecutorService> executorService,
@@ -63,16 +47,11 @@ int Track::init(std::shared_ptr<ExecutorService> executorService,
   error_[0] = cv::imread("error.jpg");
   right_[1] = cv::imread("right.jpg", 0);
   error_[1] = cv::imread("error.jpg", 0);
-  if (!initClient()) {
-    LOG(ERROR) << "rpc init failed";
-    return -1;
-  }
   return 0;
 }
 
 cv::Mat Track::getLatestImage() {
-  std::lock_guard<std::mutex> lck(lock_);
-  return image_;
+  return videoInfo_->getImage();
 }
 
 static bool errorRc(int rc) {
@@ -150,33 +129,27 @@ int Track::checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result) {
   cv::imencode(".jpg", detectImage, faceImageData);
   std::string imageBase64;
   Base64::getBase64().encode(faceImageData, imageBase64);
-  bool status = true;
+  ApiWrapper<HelmetClientDelegation> wrapper(clients_);
+  auto client = wrapper.getApi();
+  auto tClient = client->client();
+  if (tClient == nullptr) {
+    LOG(ERROR) << "get client error";
+    return -1;
+  }
   int rc = -1;
   try {
-    if (errorConnectCount_ >= 1 && time(NULL) > errorTime_ + 3) {
-      status = initClient();
-      errorConnectCount_ = 0;
-      errorTime_ = time(NULL);
-    }
-    if (status) {
-      client_->checkHelmet(result, imageBase64);
+      tClient->checkHelmet(result, imageBase64);
       rc = 0;
-    }
-    errorConnectCount_ = 0;
-    } catch (::apache::thrift::transport::TTransportException &e) {
+  } catch (::apache::thrift::transport::TTransportException &e) {
       LOG(ERROR) << "transport exception:" << e.what();
-      errorConnectCount_++;
-      if (errorConnectCount_ == 1) {
-        errorTime_ = time(NULL);
-      }
-    } catch (::apache::thrift::TApplicationException &e) {
+  } catch (::apache::thrift::TApplicationException &e) {
       LOG(ERROR) << "check helemt exception" << e.what();
-      rc = -1;
-    } catch (std::exception &e) {
-      LOG(ERROR) << "check helemt std::exception" << e.what();
       rc = -2;
-    } 
-    return rc;
+  } catch (std::exception &e) {
+      LOG(ERROR) << "check helemt std::exception" << e.what();
+      rc = -3;
+  } 
+  return rc;
 }
 
 void Track::ProcessMessage(const char *buf, int len) {
@@ -206,12 +179,12 @@ void Track::ProcessMessage(const char *buf, int len) {
   int count = objects.size();
   // no person found
   if (count <= 0) {
-    std::lock_guard<std::mutex> lck(lock_);
-    image_ = m;
+    videoInfo_->updateImage(m);
     return;
   }
-  
-  cv::Mat showImage = count > 1 ? m.clone() : m;
+ 
+  std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfos;
+  //cv::Mat showImage = count > 1 ? m.clone() : m;
   for (auto &person : objects) {
     LOG(INFO) << "(" << person.x <<"," << person.y << "," 
     << person.width << "," << person.height <<"," << person.score;
@@ -242,7 +215,11 @@ void Track::ProcessMessage(const char *buf, int len) {
       cv::imwrite(file1.str(), faceImage);
     }
 #endif
-
+    std::shared_ptr<HelmetCheckInfo> checkInfo = std::make_shared<HelmetCheckInfo>();
+    checkInfo->rect = box;
+    checkInfo->personImage = faceImage.clone();
+    checkInfos.push_back(checkInfo);
+#if 0
     HelmetCheckResult checkResult;
     int ret = checkHelmet(faceImage, checkResult);
     LOG(INFO) << "checkhelmet:" << ret;
@@ -264,16 +241,35 @@ void Track::ProcessMessage(const char *buf, int len) {
       alert.copyTo(alertImage, alertMask);
       cv::rectangle(showImage, box, scalar, 2, 1);
     }
+#endif
   }
+  
+  int personIndex = 0;
+  std::shared_ptr<HelmetControlInfo> info = std::make_shared<HelmetControlInfo>(checkInfos);
+  info->m = m;
+  info->error[0]= error_[0];
+  info->error[1]= error_[1];
+  info->right[0]= right_[0];
+  info->right[1]= right_[1];
+  info->videoCb = videoInfo_;
+  info->clients = &clients_;
+  for (auto &checkInfo : checkInfos) {
+    std::shared_ptr<HelmetArg> arg = std::make_shared<HelmetArg>(); 
+    arg->personIndex = personIndex++; 
+    arg->info = info;
+    std::unique_ptr<HelmetTask> helmetTask (new HelmetTask(arg));
+    executorService_->Execute(std::move(helmetTask));
+  }
+  auto start = std::chrono::steady_clock::now();
+  info->waitDone();
+  auto end = std::chrono::steady_clock::now();
+  LOG(INFO) << "dure:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   
   std::stringstream file;
   file << "cv/" << index_ << ".jpg";
   index_ = (index_ + 1) % 1000;
-  cv::imwrite(file.str(), showImage);
-  m = showImage;
-   
-  std::lock_guard<std::mutex> lck(lock_);
-  image_ = m;
+  //cv::imwrite(file.str(), showImage);
+  //m = showImage;
 }
 
 } //namespace ktrack

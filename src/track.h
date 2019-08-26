@@ -10,19 +10,22 @@
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransportUtils.h>
 #include "Helmet.h"
-#include "PersonSearch.h"
 #include "detectService.h"
 #include "detectServiceCvImpl.h"
 #include "config/config.h"
 #include "apipool/apiPool.h"
 #include "threadpool/thread_pool.h"
+#include "helmetClient.h"
+#include "videoInfo.h"
 
 namespace ktrack {
 class Track : public KafkaConsumer {
  public:
    Track(ApiBuffer<DetectServiceCvImpl> &detectApiBuffers,
-           ApiBuffer<FaceApi> &faceApiBuffers);
+           ApiBuffer<FaceApi> &faceApiBuffers, ApiBuffer<HelmetClientDelegation> &helmetClients);
    ~Track();
+   Track(const Track &) = delete;
+   Track & operator = (const Track &) = delete;
    int init(std::shared_ptr<ExecutorService> executorService,
             const std::string &kafkaServer,
               const std::string &topic,
@@ -44,7 +47,7 @@ class Track : public KafkaConsumer {
    int errorPersonConnectCount_{0};
    long errorPersonTime_{0};
    int index_{0};
-   cv::Mat image_;
+   std::shared_ptr<VideoInfo> videoInfo_{nullptr};//{std::make_shared<VideoInfo>()};
    cv::Rect2d move_;
    std::mutex lock_;
    //FaceApi  faceApi_;
@@ -54,6 +57,7 @@ class Track : public KafkaConsumer {
    cv::Mat error_[2];
    ApiBuffer<DetectServiceCvImpl> &detectBuffers_;
    ApiBuffer<FaceApi> &faceBuffers_;
+   ApiBuffer<HelmetClientDelegation> &clients_;
    std::shared_ptr<ExecutorService> executorService_;
    volatile bool stop_{true};
 };

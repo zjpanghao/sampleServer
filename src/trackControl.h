@@ -10,14 +10,13 @@
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransportUtils.h>
 #include "Helmet.h"
-#include "PersonSearch.h"
 #include "detectService.h"
 #include "detectServiceCvImpl.h"
 #include "config/config.h"
 #include "apipool/apiPool.h"
 #include "track.h"
 #include "threadpool/thread_pool.h"
-
+#include "helmetClient.h"
 namespace ktrack {
 class TrackControl : public KafkaConsumer {
  public:
@@ -33,6 +32,7 @@ class TrackControl : public KafkaConsumer {
    std::mutex lock_;
    ApiBuffer<DetectServiceCvImpl> detectBuffers_;
    ApiBuffer<FaceApi> faceBuffers_;
+   ApiBuffer<HelmetClientDelegation> helmetClients_;
    std::shared_ptr<ExecutorService> executorService_{nullptr};
    static constexpr int DETECT_BUFFER_NUM{3};
    static constexpr int FACE_BUFFER_NUM{3};
