@@ -27,13 +27,13 @@ void HelmetTask::doDrawWork() {
     if (checkInfo->result.errorCode == 0) {
       int rc = checkInfo->result.index;
       scalar = *colors[rc];
-#if 0
+#if 1
       cv::Mat &alert = (rc != 1) ? arg_->info->error[0] : arg_->info->right[0];
       cv::Mat &alertMask = (rc != 1) ? arg_->info->error[1] : arg_->info->right[1];
       cv::Rect alertBox(box.x, box.y - alert.rows < 0 ? 0 : box.y - alert.rows, 
           alert.cols,  alert.rows);
       cv::Mat alertImage(arg_->info->m, alertBox);
-      alert.copyTo(arg_->info->m, alertMask);
+      alert.copyTo(alertImage, alertMask);
 #endif
       cv::rectangle(arg_->info->m, box, scalar, 2, 1);
     }

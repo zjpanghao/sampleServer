@@ -217,7 +217,7 @@ void Track::ProcessMessage(const char *buf, int len) {
 #endif
     std::shared_ptr<HelmetCheckInfo> checkInfo = std::make_shared<HelmetCheckInfo>();
     checkInfo->rect = box;
-    checkInfo->personImage = faceImage.clone();
+    checkInfo->personImage = faceImage;
     checkInfos.push_back(checkInfo);
 #if 0
     HelmetCheckResult checkResult;
