@@ -6,6 +6,7 @@
 #include <thrift/transport/TTransportUtils.h>
 #include "apipool/apiPool.h"
 
+
 HelmetControlInfo::HelmetControlInfo(const CheckInfoList &list) 
   : checkInfoList_(list), number_(list.size()){
 
@@ -15,18 +16,22 @@ HelmetTask::HelmetTask(std::shared_ptr<HelmetArg> arg):arg_(arg) {
 
 }
 
+void HelmetTask::ErrorMsg(int code, const std::string &msg) {
+  if (code == 1) {
+    LOG(INFO) << "queue full notify one";
+    std::lock_guard<std::mutex> guard(arg_->info->lock);
+    arg_->info->done = true;
+    arg_->info->cond.notify_one();
+  }
+}
+
 void HelmetTask::doDrawWork() {
-  static cv::Scalar  RED(0, 0, 255);
-  static cv::Scalar  GREEN(0, 255, 0);
-  static cv::Scalar BLUE(255, 0, 0);
-  static cv::Scalar WHITE(255, 255, 255);
-  cv::Scalar *colors[] = {&RED, &GREEN, &BLUE, &WHITE};
-  cv::Scalar  &scalar = BLUE;
   for (auto &checkInfo : arg_->info->checkInfoList_) {    
     auto &box = checkInfo->rect;
     if (checkInfo->result.errorCode == 0) {
       int rc = checkInfo->result.index;
-      scalar = *colors[rc];
+      LOG(INFO) << "The rc is :" << rc;
+      cv::Scalar &scalar = Cvcolor::color().colors[rc];
 #if 1
       cv::Mat &alert = (rc != 1) ? arg_->info->error[0] : arg_->info->right[0];
       cv::Mat &alertMask = (rc != 1) ? arg_->info->error[1] : arg_->info->right[1];

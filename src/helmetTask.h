@@ -46,7 +46,23 @@ class HelmetTask : public Runnable {
    HelmetTask(std::shared_ptr<HelmetArg> arg);
    int checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result); 
    void Run() override;
+   void ErrorMsg(int code, const std::string &msg) override;
    std::shared_ptr<HelmetArg> arg_;
+
+   class Cvcolor {
+     public:
+       static Cvcolor &color() {
+         static Cvcolor cvcolor;
+         return cvcolor;
+       }
+       cv::Scalar  RED{0, 0, 255};
+       cv::Scalar  GREEN{0, 255, 0};
+       cv::Scalar BLUE{255, 0, 0};
+       cv::Scalar WHITE{255, 255, 255};
+       cv::Scalar colors[4] {RED, GREEN, BLUE, WHITE};
+     private:
+       Cvcolor(){}
+   };
  private:
    void doDrawWork();
 };

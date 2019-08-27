@@ -28,6 +28,7 @@ bool HelmetClientDelegation::initClient() {
   errorTime_ = time(NULL);
   status_ = false;
   std::shared_ptr<TTransport> socket(new TSocket(server_, port_));
+  ((TSocket*)socket.get())->setRecvTimeout(5000);
   std::shared_ptr<TTransport> transport(new TBufferedTransport(socket));
   std::shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
   client_ = std::make_shared<HelmetClient>(protocol);
@@ -37,8 +38,8 @@ bool HelmetClientDelegation::initClient() {
     LOG(ERROR) << e.what();
     return false;
   }
-  status_ = true;
-  return true;
+  status_ = transport->isOpen();
+  return status_;
 }
 
 std::shared_ptr<HelmetClient>  HelmetClientDelegation::client() {
@@ -54,10 +55,12 @@ std::shared_ptr<HelmetClient>  HelmetClientDelegation::client() {
     }
     return client_;
   };
-  auto client = getClient();
+  auto client = status_ ? getClient() : nullptr;
   if (client != nullptr) {
     return client;
   }
-  initClient();
+  if (!initClient()) {
+    return nullptr;
+  }
   return getClient();
 }
