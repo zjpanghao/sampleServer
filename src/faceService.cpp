@@ -6,7 +6,6 @@
 #include <iterator>
 #include "util.h"
 #include "faceConst.h"
-#include "faceRepo.h"
 #include "pbase64/base64.h"
 #include "opencv2/opencv.hpp"
 namespace kface {

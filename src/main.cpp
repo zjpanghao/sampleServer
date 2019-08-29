@@ -18,7 +18,6 @@
 #include <signal.h>
 #include "faceService.h"
 #include "detectService.h"
-#include "db/dbpool.h"
 #include <memory>
 #include "faceControl.h"
 

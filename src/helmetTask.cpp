@@ -7,69 +7,54 @@
 #include "apipool/apiPool.h"
 
 
-HelmetControlInfo::HelmetControlInfo(const CheckInfoList &list) 
-  : checkInfoList_(list), number_(list.size()){
+HelmetControlInfo::HelmetControlInfo(std::shared_ptr<HelmetMatData> matData, 
+                    ApiBuffer<HelmetClientDelegation> &clients,
+                    std::shared_ptr<VideoInfo> videoCb) 
+  : clients_(clients), videoCb_(videoCb), matData_(matData){
 
 }
 
-HelmetTask::HelmetTask(std::shared_ptr<HelmetArg> arg):arg_(arg) {
-
-}
-
-void HelmetTask::ErrorMsg(int code, const std::string &msg) {
-  if (code == 1) {
-    LOG(INFO) << "queue full notify one";
-    std::lock_guard<std::mutex> guard(arg_->info->lock);
-    arg_->info->done = true;
-    arg_->info->cond.notify_one();
-  }
-}
-
-void HelmetTask::doDrawWork() {
-  for (auto &checkInfo : arg_->info->checkInfoList_) {    
+void HelmetControlInfo::doDrawWork() {
+  for (auto &checkInfo : checkInfoList_) {    
     auto &box = checkInfo->rect;
     if (checkInfo->result.errorCode == 0) {
       int rc = checkInfo->result.index;
-      LOG(INFO) << "The rc is :" << rc;
       cv::Scalar &scalar = Cvcolor::color().colors[rc];
-#if 1
-      cv::Mat &alert = (rc != 1) ? arg_->info->error[0] : arg_->info->right[0];
-      cv::Mat &alertMask = (rc != 1) ? arg_->info->error[1] : arg_->info->right[1];
+      cv::Mat &alert = (rc != 1) ? matData_->error[0] : matData_->right[0];
+      cv::Mat &alertMask = (rc != 1) ? matData_->error[1] : matData_->right[1];
       cv::Rect alertBox(box.x, box.y - alert.rows < 0 ? 0 : box.y - alert.rows, 
           alert.cols,  alert.rows);
-      cv::Mat alertImage(arg_->info->m, alertBox);
+      cv::Mat alertImage(m_, alertBox);
       alert.copyTo(alertImage, alertMask);
-#endif
-      cv::rectangle(arg_->info->m, box, scalar, 2, 1);
+      cv::rectangle(m_, box, scalar, 2, 1);
     }
   }
-  arg_->info->videoCb->updateImage(arg_->info->m);
-  std::lock_guard<std::mutex> guard(arg_->info->lock);
-  arg_->info->done = true;
-  arg_->info->cond.notify_one();
+  videoCb_->updateImage(m_);
+  std::lock_guard<std::mutex> guard(lock);
+  done = true;
+  cond.notify_one();
 }
 
-void HelmetTask::Run() {
-  if (arg_->info->checkInfoList_.empty()) {
+void HelmetControlInfo::run(int inx) {
+  if (checkInfoList_.empty()) {
     return;
   }
-  int inx = arg_->personIndex;
-  auto checkInfo = arg_->info->checkInfoList_[inx];
+  auto checkInfo = checkInfoList_[inx];
   int ret = checkHelmet(checkInfo->personImage, checkInfo->result);
   if (ret < 0) {
     checkInfo->result.errorCode = -1;
   }
-  if (1 == arg_->info->number_.fetch_add(-1)) {
+  if (1 == number_.fetch_add(-1)) {
     doDrawWork();
   }
 }
 
-int HelmetTask::checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result) {
+int HelmetControlInfo::checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result) {
   std::vector<unsigned char> faceImageData;
   cv::imencode(".jpg", detectImage, faceImageData);
   std::string imageBase64;
   Base64::getBase64().encode(faceImageData, imageBase64);
-  ApiWrapper<HelmetClientDelegation> wrapper(*arg_->info->clients);
+  ApiWrapper<HelmetClientDelegation> wrapper(clients_);
   auto client = wrapper.getApi();
   auto tClient = client->client();
   if (tClient == nullptr) {
@@ -91,3 +76,27 @@ int HelmetTask::checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &resul
   } 
   return rc;
 }
+
+
+
+void HelmetControlInfo::ErrorMsg(int code, const std::string &msg) {
+  if (code == 1) {
+    LOG(INFO) << "queue full notify one";
+    std::lock_guard<std::mutex> guard(lock);
+    done = true;
+    cond.notify_one();
+  }
+}
+
+HelmetTask::HelmetTask(std::shared_ptr<HelmetArg> arg):arg_(arg) {
+}
+
+void HelmetTask::ErrorMsg(int code, const std::string &msg) {
+  arg_->info->ErrorMsg(code, msg);
+}
+
+void HelmetTask::Run() {
+  int inx = arg_->personIndex;
+  arg_->info->run(inx);
+}
+

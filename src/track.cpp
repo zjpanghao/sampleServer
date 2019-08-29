@@ -1,10 +1,10 @@
 #include "track.h"
 #include <opencv2/opencv.hpp>
-#include <opencv2/tracking.hpp>
 #include "pbase64/base64.h"
 #include <json/json.h>
 #include <glog/logging.h>
 #include "faceEntity.h"
+#include "helmetEntity.h"
 #include "detectService.h"
 #include "detectServiceCvImpl.h"
 #include "helmetTask.h"
@@ -35,6 +35,7 @@ int Track::init(std::shared_ptr<ExecutorService> executorService,
                   const std::string &group
                   ) {
   executorService_ = executorService;
+  topic_ = topic;
   int rc = Init(kafkaServer, topic, group);
   if (rc == 0) {
     rc |= StartAll();
@@ -43,19 +44,17 @@ int Track::init(std::shared_ptr<ExecutorService> executorService,
     return -1;
   }
   index_ = 0;
-  right_[0] = cv::imread("right.jpg");
-  error_[0] = cv::imread("error.jpg");
-  right_[1] = cv::imread("right.jpg", 0);
-  error_[1] = cv::imread("error.jpg", 0);
+  matData_ = std::make_shared<HelmetMatData>();
+  matData_->right[0] = cv::imread("right.jpg");
+  matData_->error[0] = cv::imread("error.jpg");
+  matData_->right[1] = cv::imread("right.jpg", 0);
+  matData_->error[1] = cv::imread("error.jpg", 0);
+  helmetControlInfo_ = std::make_shared<HelmetControlInfo>(matData_, clients_,videoInfo_);
   return 0;
 }
 
 cv::Mat Track::getLatestImage() {
   return videoInfo_->getImage();
-}
-
-static bool errorRc(int rc) {
-  return rc == 1 ? false : true;
 }
 
 void Track::filterPersons(std::vector<ObjectDetectResult> &persons,
@@ -124,36 +123,8 @@ bool Track::rectValid(const ObjectDetectResult &object, int maxWidth, int maxHei
   return true;
 }
 
-int Track::checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result) {
-  std::vector<unsigned char> faceImageData;
-  cv::imencode(".jpg", detectImage, faceImageData);
-  std::string imageBase64;
-  Base64::getBase64().encode(faceImageData, imageBase64);
-  ApiWrapper<HelmetClientDelegation> wrapper(clients_);
-  auto client = wrapper.getApi();
-  auto tClient = client->client();
-  if (tClient == nullptr) {
-    LOG(ERROR) << "get client error";
-    return -1;
-  }
-  int rc = -1;
-  try {
-      tClient->checkHelmet(result, imageBase64);
-      rc = 0;
-  } catch (::apache::thrift::transport::TTransportException &e) {
-      LOG(ERROR) << "transport exception:" << e.what();
-  } catch (::apache::thrift::TApplicationException &e) {
-      LOG(ERROR) << "check helemt exception" << e.what();
-      rc = -2;
-  } catch (std::exception &e) {
-      LOG(ERROR) << "check helemt std::exception" << e.what();
-      rc = -3;
-  } 
-  return rc;
-}
-
 void Track::ProcessMessage(const char *buf, int len) {
-  LOG(INFO) << "recv len:" << len << " tid:" << std::this_thread::get_id();
+  //LOG(INFO) << "recv len:" << len << " tid:" << std::this_thread::get_id();
   std::string recv(buf, len);
   Json::Value root;
   Json::Reader reader;
@@ -163,7 +134,7 @@ void Track::ProcessMessage(const char *buf, int len) {
   }
   std::string image = root["image"].asString();
   std::string dateTime = root["dateTime"].asString();
-  LOG(INFO) << "dateTime:" << dateTime;
+  //LOG(INFO) << "dateTime:" << dateTime;
   std::vector<unsigned char> data;
   Base64::getBase64().decode(image, data);
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
@@ -186,8 +157,8 @@ void Track::ProcessMessage(const char *buf, int len) {
   std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfos;
   //cv::Mat showImage = count > 1 ? m.clone() : m;
   for (auto &person : objects) {
-    LOG(INFO) << "(" << person.x <<"," << person.y << "," 
-    << person.width << "," << person.height <<"," << person.score;
+    //LOG(INFO) << "(" << person.x <<"," << person.y << "," 
+    //<< person.width << "," << person.height <<"," << person.score;
     cv::Rect box(person.x, person.y, person.width, person.height/6);
     cv::Rect faceDetectBox(person.x, person.y, person.width, person.height/2);
     cv::Mat faceImage(m, faceDetectBox);
@@ -215,55 +186,27 @@ void Track::ProcessMessage(const char *buf, int len) {
       cv::imwrite(file1.str(), faceImage);
     }
 #endif
-    std::shared_ptr<HelmetCheckInfo> checkInfo = std::make_shared<HelmetCheckInfo>();
+    std::shared_ptr<HelmetCheckInfo> checkInfo 
+      = std::make_shared<HelmetCheckInfo>();
     checkInfo->rect = box;
     checkInfo->personImage = faceImage;
     checkInfos.push_back(checkInfo);
-#if 0
-    HelmetCheckResult checkResult;
-    int ret = checkHelmet(faceImage, checkResult);
-    LOG(INFO) << "checkhelmet:" << ret;
-    static cv::Scalar  RED(0, 0, 255);
-    static cv::Scalar  GREEN(0, 255, 0);
-    static cv::Scalar BLUE(255, 0, 0);
-    static cv::Scalar WHITE(255, 255, 255);
-    cv::Scalar *colors[] = {&RED, &GREEN, &BLUE, &WHITE};
-    cv::Scalar  &scalar = BLUE;
-    
-    if (ret == 0 && checkResult.errorCode == 0) {
-      int rc = checkResult.index;
-      scalar = *colors[rc];
-      cv::Mat &alert = (errorRc(rc)) ? error_[0] : right_[0];
-      cv::Mat &alertMask = (errorRc(rc)) ? error_[1] : right_[1];
-      cv::Rect alertBox(box.x, box.y - alert.rows < 0 ? 0 : box.y - alert.rows, 
-          alert.cols,  alert.rows);
-      cv::Mat alertImage(showImage, alertBox);
-      alert.copyTo(alertImage, alertMask);
-      cv::rectangle(showImage, box, scalar, 2, 1);
-    }
-#endif
   }
   
-  int personIndex = 0;
-  std::shared_ptr<HelmetControlInfo> info = std::make_shared<HelmetControlInfo>(checkInfos);
-  info->m = m;
-  info->error[0]= error_[0];
-  info->error[1]= error_[1];
-  info->right[0]= right_[0];
-  info->right[1]= right_[1];
-  info->videoCb = videoInfo_;
-  info->clients = &clients_;
-  for (auto &checkInfo : checkInfos) {
+  helmetControlInfo_->setImage(m);
+  helmetControlInfo_->setCheckInfoList(checkInfos);
+  for (int personIndex = 0; personIndex < checkInfos.size(); personIndex++) {
     std::shared_ptr<HelmetArg> arg = std::make_shared<HelmetArg>(); 
-    arg->personIndex = personIndex++; 
-    arg->info = info;
+    arg->personIndex = personIndex;
+    arg->info = helmetControlInfo_;
     std::unique_ptr<HelmetTask> helmetTask (new HelmetTask(arg));
     executorService_->Execute(std::move(helmetTask));
   }
   auto start = std::chrono::steady_clock::now();
-  info->waitDone();
+  helmetControlInfo_->waitDone();
   auto end = std::chrono::steady_clock::now();
-  LOG(INFO) << "dure:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  LOG(INFO) << topic_ <<  " faces:" << checkInfos.size() 
+    << " dure:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   
   std::stringstream file;
   file << "cv/" << index_ << ".jpg";

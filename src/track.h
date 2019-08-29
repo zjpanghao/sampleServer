@@ -17,7 +17,8 @@
 #include "threadpool/thread_pool.h"
 #include "helmetClient.h"
 #include "videoInfo.h"
-
+struct HelmetMatData;
+class HelmetControlInfo;
 namespace ktrack {
 class Track : public KafkaConsumer {
  public:
@@ -60,6 +61,9 @@ class Track : public KafkaConsumer {
    ApiBuffer<HelmetClientDelegation> &clients_;
    std::shared_ptr<ExecutorService> executorService_;
    volatile bool stop_{true};
+   std::shared_ptr<HelmetMatData> matData_;
+   std::shared_ptr<HelmetControlInfo> helmetControlInfo_;
+   std::string topic_;
 };
 
 } // namespace

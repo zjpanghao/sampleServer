@@ -1,6 +1,5 @@
 #include "trackControl.h"
 #include <opencv2/opencv.hpp>
-#include <opencv2/tracking.hpp>
 #include "pbase64/base64.h"
 #include <json/json.h>
 #include <glog/logging.h>

@@ -2,13 +2,13 @@
 #define INCLUDE_HELMET_TASK_H
 #include <atomic>
 #include <opencv2/opencv.hpp>
-#include <opencv2/tracking.hpp>
 #include "Helmet.h"
 #include "helmetClient.h"
 #include "threadpool/thread_pool.h"
 #include "apipool/apiPool.h"
 #include "videoInfo.h"
 #include <glog/logging.h>
+#include "helmetEntity.h"
 struct HelmetCheckInfo {
   cv::Rect rect;
   cv::Mat personImage;
@@ -18,36 +18,6 @@ struct HelmetCheckInfo {
 class HelmetControlInfo {
  public:
   typedef std::vector<std::shared_ptr<HelmetCheckInfo>>  CheckInfoList;
-
-  HelmetControlInfo(const CheckInfoList &checkInfoList);
-  void waitDone() {
-    std::unique_lock<std::mutex>  ulock(lock);
-    cond.wait(ulock, [this] { return done;});
-  }
-  cv::Mat m;
-  cv::Mat error[2];
-  cv::Mat right[2];
-  std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfoList_;
-  ApiBuffer<HelmetClientDelegation> *clients;
-  std::shared_ptr<VideoInfo> videoCb;
-  std::mutex lock;
-  bool done{false};
-  std::atomic<int> number_;
-  std::condition_variable cond;
-};
-
-struct HelmetArg {
-  std::shared_ptr<HelmetControlInfo> info;
-  int personIndex;
-};
-
-class HelmetTask : public Runnable {
- public:
-   HelmetTask(std::shared_ptr<HelmetArg> arg);
-   int checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result); 
-   void Run() override;
-   void ErrorMsg(int code, const std::string &msg) override;
-   std::shared_ptr<HelmetArg> arg_;
 
    class Cvcolor {
      public:
@@ -63,7 +33,53 @@ class HelmetTask : public Runnable {
      private:
        Cvcolor(){}
    };
+
+  HelmetControlInfo(std::shared_ptr<HelmetMatData> matData,
+                    ApiBuffer<HelmetClientDelegation> &clients,
+                    std::shared_ptr<VideoInfo> videoCb);
+
+  void waitDone() {
+    std::unique_lock<std::mutex>  ulock(lock);
+    cond.wait(ulock, [this] { return done;});
+    done = false;
+  }
+  void doDrawWork();
+
+  void run(int inx);
+
+  int checkHelmet(const cv::Mat &detectImage, HelmetCheckResult &result); 
+
+  void ErrorMsg(int code, const std::string &msg);
+
+  void setImage(cv::Mat &m) {m_ = m;}
+
+  void setCheckInfoList(std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfoList) {
+    checkInfoList_ = checkInfoList;
+    number_ = checkInfoList_.size();
+  }
+
  private:
-   void doDrawWork();
+  ApiBuffer<HelmetClientDelegation> &clients_;
+  std::shared_ptr<VideoInfo> videoCb_;
+  std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfoList_;
+  std::shared_ptr<HelmetMatData> matData_;
+  std::mutex lock;
+  bool done{false};
+  std::atomic<int> number_;
+  cv::Mat m_;
+  std::condition_variable cond;
+};
+
+struct HelmetArg {
+  std::shared_ptr<HelmetControlInfo> info;
+  int personIndex;
+};
+
+class HelmetTask : public Runnable {
+ public:
+   HelmetTask(std::shared_ptr<HelmetArg> arg);
+   void Run() override;
+   void ErrorMsg(int code, const std::string &msg) override;
+   std::shared_ptr<HelmetArg> arg_;
 };
 #endif

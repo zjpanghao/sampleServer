@@ -20,10 +20,10 @@ int DetectServiceCvImpl::init(const kunyan::Config &config) {
   return 0;
 }
 
-static std::vector<std::string> getOutputsNames(const cv::dnn::Net& net) {
-    std::vector<std::string> names;
+static std::vector<cv::String> getOutputsNames(const cv::dnn::Net& net) {
+    std::vector<cv::String> names;
     std::vector<int> outLayers = net.getUnconnectedOutLayers();
-    std::vector<std::string> layersNames = net.getLayerNames();
+    std::vector<cv::String> layersNames = net.getLayerNames();
     names.resize(outLayers.size());
     for (size_t i = 0; i < outLayers.size(); ++i)
           names[i] = layersNames[outLayers[i] - 1];
