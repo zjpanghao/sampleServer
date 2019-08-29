@@ -11,10 +11,6 @@ struct ObjectDetectResult {
   int height;
 
 };
-struct MatData {
-  cv::Mat m;
-  cv::Mat error[2];
-  cv::Mat right[2];
-};
+
 }
 #endif
