@@ -78,7 +78,7 @@ int TrackControl::init() {
     ss >> configParam_.detect.confidence;
   }
 
-  value =  config_.get("detect", "record");
+  value =  config_.get("helmet", "record");
   configParam_.helmet.record = false;
   ss.clear();
   ss.str("");
