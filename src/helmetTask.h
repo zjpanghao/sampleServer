@@ -29,7 +29,7 @@ class HelmetControlInfo {
        cv::Scalar  GREEN{0, 255, 0};
        cv::Scalar BLUE{255, 0, 0};
        cv::Scalar WHITE{255, 255, 255};
-       cv::Scalar colors[4] {RED, GREEN, BLUE, WHITE};
+       cv::Scalar colors[4] {GREEN, RED, BLUE, WHITE};
      private:
        Cvcolor(){}
    };
@@ -58,6 +58,10 @@ class HelmetControlInfo {
     number_ = checkInfoList_.size();
   }
 
+  void setConfidence(double confidence) {
+    confidence_ = confidence;
+  }
+
  private:
   ApiBuffer<HelmetClientDelegation> &clients_;
   std::shared_ptr<VideoInfo> videoCb_;
@@ -68,6 +72,7 @@ class HelmetControlInfo {
   std::atomic<int> number_;
   cv::Mat m_;
   std::condition_variable cond;
+  double confidence_{0.7};
 };
 
 struct HelmetArg {

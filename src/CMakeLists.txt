@@ -1,6 +1,6 @@
 
 #add_definitions(-std=c++11)
-add_definitions(-std=c++11)
+add_definitions(-std=c++11 -DDEBUG=1)
 set(BASE /home/panghao/github/kunlib)
 include_directories(/home/panghao/pg/boost_1_69_0 /home/panghao/github/face_recognition/src ../include ${BASE}/include /usr/local/include/librdkafka /usr/local/include /usr/local/include/zdb ${BASE}/include/librdkafka ${BASE}/include/hiredis ${BASE}/user)
 link_directories(/home/panghao/github/face_recognition/build /usr/local/lib ${BASE}/libs ${BASE}/libs/opencv)

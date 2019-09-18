@@ -41,6 +41,62 @@ int TrackControl::init() {
 
   helmetClients_.init(helmetNumbers, config_);
   executorService_ = std::make_shared<ExecutorService>(helmetNumbers);
+  
+  std::string value =  config_.get("helmet", "confidence");
+  configParam_.helmet.confidence = 0.8;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.helmet.confidence;
+  }
+
+  value =  config_.get("detect", "widthHeightThresh");
+  configParam_.detect.widthHeightThresh = 3;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.detect.widthHeightThresh;
+  }
+
+  value =  config_.get("detect", "hatRate");
+  configParam_.detect.hatRate = 0.2;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.detect.hatRate;
+  }
+
+  value =  config_.get("detect", "confidence");
+  configParam_.detect.confidence = 0.6;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.detect.confidence;
+  }
+
+  value =  config_.get("detect", "record");
+  configParam_.helmet.record = false;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.helmet.record;
+    LOG(INFO) << "set recored" << configParam_.helmet.record;
+  }
+
+  value =  config_.get("face", "confidence");
+  configParam_.face.confidence = 0.6;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.face.confidence;
+  }
+  
   int rc = Init(config_.get("kafka", "server"),
                 config_.get("kafka", "topic"), 
                 config_.get("kafka", "group")
@@ -79,9 +135,14 @@ void TrackControl::ProcessMessage(const char *buf, int len) {
   if (trackMp_.count(caseId) > 0) {
     return;
   }
-  std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, faceBuffers_, helmetClients_);
-  std::string server = config_.get("kafka", "server");
   std::stringstream ss;
+  std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, 
+                                                        faceBuffers_, 
+                                                        helmetClients_,
+                                                        configParam_);
+  std::string server = config_.get("kafka", "server");
+  ss.clear();
+  ss.str("");
   ss << "face_" << caseId;
   if (0 != track->init(executorService_, server, ss.str(), "group_face")) {
     LOG(ERROR) << "track start error!";

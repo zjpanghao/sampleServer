@@ -16,12 +16,13 @@ using  apache::thrift::transport::TSocket;
 using  apache::thrift::transport::TTransportException;
 using  apache::thrift::transport::TBufferedTransport;
 
-#define PERSON_CONF  0.5
 #define BORDER_WIDTH 150
 namespace ktrack {
 Track::Track(ApiBuffer<DetectServiceCvImpl> &apiBuffers,
-    ApiBuffer<FaceApi> &faceBuffers, ApiBuffer<HelmetClientDelegation> &clients) 
-    : detectBuffers_(apiBuffers), faceBuffers_(faceBuffers), clients_(clients), videoInfo_(std::make_shared<VideoInfo>()) {
+    ApiBuffer<FaceApi> &faceBuffers, 
+    ApiBuffer<HelmetClientDelegation> &clients, 
+    const ConfigParam &configParam) 
+    : detectBuffers_(apiBuffers), faceBuffers_(faceBuffers), clients_(clients), videoInfo_(std::make_shared<VideoInfo>()), configParam_(configParam){
 }
 
 Track::~Track() {
@@ -30,10 +31,10 @@ Track::~Track() {
 }
 
 int Track::init(std::shared_ptr<ExecutorService> executorService,
-                const std::string &kafkaServer,
-                  const std::string &topic,
-                  const std::string &group
-                  ) {
+    const std::string &kafkaServer,
+    const std::string &topic,
+    const std::string &group
+    ) {
   executorService_ = executorService;
   topic_ = topic;
   int rc = Init(kafkaServer, topic, group);
@@ -50,6 +51,7 @@ int Track::init(std::shared_ptr<ExecutorService> executorService,
   matData_->right[1] = cv::imread("right.jpg", 0);
   matData_->error[1] = cv::imread("error.jpg", 0);
   helmetControlInfo_ = std::make_shared<HelmetControlInfo>(matData_, clients_,videoInfo_);
+  helmetControlInfo_->setConfidence(configParam_.helmet.confidence);
   return 0;
 }
 
@@ -61,7 +63,7 @@ void Track::filterPersons(std::vector<ObjectDetectResult> &persons,
                                 int maxWidth, int maxHeight) {
   auto it = persons.begin();
   while (it != persons.end()) {
-    if (it->category != "person" || it->score < PERSON_CONF || !rectValid(*it,
+    if (it->category != "person" || it->score < configParam_.detect.confidence || !rectValid(*it,
     maxWidth, maxHeight)) {
       it =persons.erase(it);
     } else {
@@ -73,7 +75,7 @@ void Track::filterPersons(std::vector<ObjectDetectResult> &persons,
 bool Track::getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int maxHeight, cv::Rect &rect) {
   auto it = faces.begin();
   while (it != faces.end()) {
-    if (it->confidence() > 0.5) {
+    if (it->confidence() > configParam_.face.confidence) {
       //auto &location = it->second;
       rect = it->rect();
       rect.x -= rect.width / 2;
@@ -120,6 +122,10 @@ bool Track::rectValid(const ObjectDetectResult &object, int maxWidth, int maxHei
   if (object.height > maxHeight - object.y) {
     return false;
   }
+  if (object.width / (object.height * configParam_.detect.hatRate) >
+      configParam_.detect.widthHeightThresh) {
+    return false;
+  } 
   return true;
 }
 
@@ -138,7 +144,7 @@ void Track::ProcessMessage(const char *buf, int len) {
   std::vector<unsigned char> data;
   Base64::getBase64().decode(image, data);
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
-  //cv::Mat m(mo, cv::Rect(mo.cols / 3, 0, mo.cols * 2 / 3 , mo.rows));
+  //cv::Mat m(mo, cv::Rect(0, 0, mo.cols * 1 / 3 + 200 , mo.rows));
   cv::Mat m = mo;//.clone();
   std::vector<ObjectDetectResult> objects;
   {
@@ -159,7 +165,7 @@ void Track::ProcessMessage(const char *buf, int len) {
   for (auto &person : objects) {
     //LOG(INFO) << "(" << person.x <<"," << person.y << "," 
     //<< person.width << "," << person.height <<"," << person.score;
-    cv::Rect box(person.x, person.y, person.width, person.height/6);
+    cv::Rect box(person.x, person.y, person.width, person.height * configParam_.detect.hatRate);
     cv::Rect faceDetectBox(person.x, person.y, person.width, person.height/2);
     cv::Mat faceImage(m, faceDetectBox);
     std::vector<FaceLocation> faceList;
@@ -173,19 +179,18 @@ void Track::ProcessMessage(const char *buf, int len) {
     cv::Rect helmetBox;
     bool valid = getHelmetBox(faceList, faceImage.cols, faceImage.rows, helmetBox);
     if (valid) {
+      helmetBox.height /= 2;
       box = helmetBox;
       faceImage = cv::Mat(faceImage, helmetBox);
       box.x  += boxDetect.x;
       box.y  += boxDetect.y;
     }
-#if DEBUG
-    std::stringstream file1;
-    file1 << "landmark/" << "landmark_" << index_ << ".jpg";
-    index_ = (index_ + 1) % 1000;
-    if (faceImage.cols < faceImage.rows * 1.7) {
+    if (configParam_.helmet.record) {
+      std::stringstream file1;
+      file1 << "landmark/" << "landmark_" << index_ << ".jpg";
+      index_ = (index_ + 1) % 1000;
       cv::imwrite(file1.str(), faceImage);
     }
-#endif
     std::shared_ptr<HelmetCheckInfo> checkInfo 
       = std::make_shared<HelmetCheckInfo>();
     checkInfo->rect = box;
@@ -208,9 +213,6 @@ void Track::ProcessMessage(const char *buf, int len) {
   LOG(INFO) << topic_ <<  " faces:" << checkInfos.size() 
     << " dure:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   
-  std::stringstream file;
-  file << "cv/" << index_ << ".jpg";
-  index_ = (index_ + 1) % 1000;
   //cv::imwrite(file.str(), showImage);
   //m = showImage;
 }

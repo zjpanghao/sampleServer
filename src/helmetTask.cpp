@@ -19,9 +19,16 @@ void HelmetControlInfo::doDrawWork() {
     auto &box = checkInfo->rect;
     if (checkInfo->result.errorCode == 0) {
       int rc = checkInfo->result.index;
-      cv::Scalar &scalar = Cvcolor::color().colors[rc];
-      cv::Mat &alert = (rc != 1) ? matData_->error[0] : matData_->right[0];
-      cv::Mat &alertMask = (rc != 1) ? matData_->error[1] : matData_->right[1];
+      if (rc == -1 || checkInfo->result.name.length() < 2) {
+        LOG(INFO) << "should never happended";
+        return;
+      }
+      if (checkInfo->result.score < confidence_) {
+        continue;
+      }
+      cv::Scalar &scalar = Cvcolor::color().colors[rc > 0 ? 1 : 0];
+      cv::Mat &alert = (rc) ? matData_->error[0] : matData_->right[0];
+      cv::Mat &alertMask = (rc) ? matData_->error[1] : matData_->right[1];
       cv::Rect alertBox(box.x, box.y - alert.rows < 0 ? 0 : box.y - alert.rows, 
           alert.cols,  alert.rows);
       cv::Mat alertImage(m_, alertBox);

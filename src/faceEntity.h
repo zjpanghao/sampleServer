@@ -12,5 +12,27 @@ struct ObjectDetectResult {
 
 };
 
+struct DetectParam {
+  double confidence;
+  double hatRate;
+  double widthHeightThresh; 
+};
+
+struct FaceParam {
+  double confidence;
+};
+
+struct HelmetParam {
+  double confidence;
+  int nums;
+  bool record;
+};
+
+struct ConfigParam {
+  DetectParam detect;
+  FaceParam  face;
+  HelmetParam helmet;
+};
+
 }
 #endif

@@ -23,7 +23,9 @@ namespace ktrack {
 class Track : public KafkaConsumer {
  public:
    Track(ApiBuffer<DetectServiceCvImpl> &detectApiBuffers,
-           ApiBuffer<FaceApi> &faceApiBuffers, ApiBuffer<HelmetClientDelegation> &helmetClients);
+           ApiBuffer<FaceApi> &faceApiBuffers, 
+           ApiBuffer<HelmetClientDelegation> &helmetClients,
+           const ConfigParam &configParam);
    ~Track();
    Track(const Track &) = delete;
    Track & operator = (const Track &) = delete;
@@ -64,6 +66,7 @@ class Track : public KafkaConsumer {
    std::shared_ptr<HelmetMatData> matData_;
    std::shared_ptr<HelmetControlInfo> helmetControlInfo_;
    std::string topic_;
+   const ConfigParam &configParam_;
 };
 
 } // namespace

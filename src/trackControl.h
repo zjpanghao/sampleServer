@@ -34,6 +34,7 @@ class TrackControl : public KafkaConsumer {
    ApiBuffer<FaceApi> faceBuffers_;
    ApiBuffer<HelmetClientDelegation> helmetClients_;
    std::shared_ptr<ExecutorService> executorService_{nullptr};
+   ConfigParam  configParam_;
    static constexpr int DETECT_BUFFER_NUM{3};
    static constexpr int FACE_BUFFER_NUM{3};
 };
