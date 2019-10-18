@@ -60,6 +60,14 @@ int TrackControl::init() {
     ss >> configParam_.detect.widthHeightThresh;
   }
 
+  value =  config_.get("detect", "heightWidthThresh");
+  configParam_.detect.heightWidthThresh = 3;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.detect.heightWidthThresh;
+  }
   value =  config_.get("detect", "hatRate");
   configParam_.detect.hatRate = 0.2;
   ss.clear();

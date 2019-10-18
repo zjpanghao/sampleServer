@@ -67,6 +67,11 @@ void Track::filterPersons(std::vector<ObjectDetectResult> &persons,
     maxWidth, maxHeight)) {
       it =persons.erase(it);
     } else {
+      if (it->height < it->width * configParam_.detect.heightWidthThresh) {
+        LOG(INFO) << "little :" << configParam_.detect.heightWidthThresh;
+        it =persons.erase(it);
+        continue;
+      }
       it++;
     }
   }
@@ -79,14 +84,13 @@ bool Track::getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int max
       //auto &location = it->second;
       rect = it->rect();
       rect.x -= rect.width / 2;
+      rect.y -= rect.height;
       if (rect.x < 0) {
         rect.x = 0;
       }
-      rect.y -= rect.height / 2;
       if (rect.y < 0) {
         rect.y = 0;
       }
-      rect.height +=  rect.height / 2;
       if (rect.y + rect.height >= maxHeight) {
         rect.height = maxHeight - rect.y;
       }
@@ -115,17 +119,13 @@ bool Track::rectValid(const ObjectDetectResult &object, int maxWidth, int maxHei
     return false;
   }
 
-  if (object.width  + object.x > maxWidth) {
+  if (object.width  + object.x + BORDER_WIDTH> maxWidth) {
     return false;
   }
 
   if (object.height > maxHeight - object.y) {
     return false;
   }
-  if (object.width / (object.height * configParam_.detect.hatRate) >
-      configParam_.detect.widthHeightThresh) {
-    return false;
-  } 
   return true;
 }
 
@@ -165,8 +165,12 @@ void Track::ProcessMessage(const char *buf, int len) {
   for (auto &person : objects) {
     //LOG(INFO) << "(" << person.x <<"," << person.y << "," 
     //<< person.width << "," << person.height <<"," << person.score;
+    person.y = person.y > 20 ? person.y - 20 : 0;
     cv::Rect box(person.x, person.y, person.width, person.height * configParam_.detect.hatRate);
-    cv::Rect faceDetectBox(person.x, person.y, person.width, person.height/2);
+    LOG(INFO) << "hatrate:" << configParam_.detect.hatRate;
+    cv::rectangle(m, box, cv::Scalar(255,255,255));
+    imwrite("test.jpg", m);
+    cv::Rect faceDetectBox(box);
     cv::Mat faceImage(m, faceDetectBox);
     std::vector<FaceLocation> faceList;
     // check if face found
@@ -179,7 +183,6 @@ void Track::ProcessMessage(const char *buf, int len) {
     cv::Rect helmetBox;
     bool valid = getHelmetBox(faceList, faceImage.cols, faceImage.rows, helmetBox);
     if (valid) {
-      helmetBox.height /= 2;
       box = helmetBox;
       faceImage = cv::Mat(faceImage, helmetBox);
       box.x  += boxDetect.x;

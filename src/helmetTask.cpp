@@ -26,16 +26,25 @@ void HelmetControlInfo::doDrawWork() {
       if (checkInfo->result.score < confidence_) {
         continue;
       }
-      cv::Scalar &scalar = Cvcolor::color().colors[rc > 0 ? 1 : 0];
+      cv::Scalar &scalar = Cvcolor::color().colors[rc];
       cv::Mat &alert = (rc) ? matData_->error[0] : matData_->right[0];
       cv::Mat &alertMask = (rc) ? matData_->error[1] : matData_->right[1];
       cv::Rect alertBox(box.x, box.y - alert.rows < 0 ? 0 : box.y - alert.rows, 
           alert.cols,  alert.rows);
       cv::Mat alertImage(m_, alertBox);
+      std::stringstream scoreStr;
+      scoreStr << checkInfo->result.score;
+      cv::putText(m_, scoreStr.str(), cv::Point(box.x + 30, box.y),
+          cv::FONT_HERSHEY_PLAIN, 2, scalar);
       alert.copyTo(alertImage, alertMask);
       cv::rectangle(m_, box, scalar, 2, 1);
     }
   }
+  static int inx = 0;
+  inx = (inx + 1) % 100;
+  std::stringstream ss;
+  ss << "cv/" << inx << ".jpg";
+  cv::imwrite(ss.str().c_str(), m_);
   videoCb_->updateImage(m_);
   std::lock_guard<std::mutex> guard(lock);
   done = true;
