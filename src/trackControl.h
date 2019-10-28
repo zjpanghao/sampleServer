@@ -24,6 +24,7 @@ class TrackControl : public KafkaConsumer {
    ~TrackControl();
    int init();
    void ProcessMessage(const char *buf, int len) override;
+   void startTrack(int n, bool withKafka);
    std::shared_ptr<Track> getTrackById(int caseId);
     
  private:
@@ -32,7 +33,8 @@ class TrackControl : public KafkaConsumer {
    std::mutex lock_;
    ApiBuffer<DetectServiceCvImpl> detectBuffers_;
    ApiBuffer<FaceApi> faceBuffers_;
-   ApiBuffer<HelmetClientDelegation> helmetClients_;
+   static constexpr int CLIENTS_NUM = 5;
+   ApiBuffer<HelmetClientDelegation> helmetClients_[CLIENTS_NUM];
    std::shared_ptr<ExecutorService> executorService_{nullptr};
    ConfigParam  configParam_;
    static constexpr int DETECT_BUFFER_NUM{3};

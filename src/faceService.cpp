@@ -17,12 +17,26 @@ FaceService& FaceService::getFaceService() {
 FaceService::FaceService() {
 }
 
+int FaceService::detect(int caseId, 
+    const std::string &image, 
+    std::vector<ktrack::ObjectDetectResult> result[]) {
+  auto track = trackControl_->getTrackById(caseId);
+  if (track == nullptr) {
+    return -1;
+  }
+  std::vector<unsigned char> data;
+  Base64::getBase64().decode(image, data);
+  cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
+  return track->detect(mo, result);
+}
 void FaceService::init(const kunyan::Config &config) {
   //std::shared_ptr<DBPool> pool(new DBPool());
   // pool->PoolInit(new DataSource(config));
   //newsRepo_.reset(new FaceRepo(pool));
   trackControl_ = std::make_shared<ktrack::TrackControl>(config);
   trackControl_->init();
+  trackControl_->startTrack(0, false);
+  trackControl_->startTrack(3, true);
   //track_->init(config);
   //start_ = true;
 }

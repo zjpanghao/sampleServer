@@ -37,6 +37,8 @@ class Track : public KafkaConsumer {
    bool initClient();
    bool initPersonClient();
    cv::Mat getLatestImage();
+   int detect(const cv::Mat &m,
+      std::vector<ObjectDetectResult> result[]);
 
  private:
    void filterPersons(std::vector<ObjectDetectResult> &persons, 

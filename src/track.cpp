@@ -37,6 +37,7 @@ int Track::init(std::shared_ptr<ExecutorService> executorService,
     ) {
   executorService_ = executorService;
   topic_ = topic;
+if (kafkaServer != "") {
   int rc = Init(kafkaServer, topic, group);
   if (rc == 0) {
     rc |= StartAll();
@@ -44,6 +45,7 @@ int Track::init(std::shared_ptr<ExecutorService> executorService,
   if (rc != 0) {
     return -1;
   }
+}
   index_ = 0;
   matData_ = std::make_shared<HelmetMatData>();
   matData_->right[0] = cv::imread("right.jpg");
@@ -163,9 +165,7 @@ void Track::ProcessMessage(const char *buf, int len) {
   std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfos;
   //cv::Mat showImage = count > 1 ? m.clone() : m;
   for (auto &person : objects) {
-    //LOG(INFO) << "(" << person.x <<"," << person.y << "," 
-    //<< person.width << "," << person.height <<"," << person.score;
-    person.y = person.y > 20 ? person.y - 20 : 0;
+    person.y = person.y > configParam_.detect.upLength ? person.y - configParam_.detect.upLength : 0;
     cv::Rect box(person.x, person.y, person.width, person.height * configParam_.detect.hatRate);
     LOG(INFO) << "hatrate:" << configParam_.detect.hatRate;
     cv::rectangle(m, box, cv::Scalar(255,255,255));
@@ -218,6 +218,78 @@ void Track::ProcessMessage(const char *buf, int len) {
   
   //cv::imwrite(file.str(), showImage);
   //m = showImage;
+}
+
+int Track::detect(const cv::Mat &m,
+      std::vector<ObjectDetectResult> result[]) {
+  std::vector<ObjectDetectResult> objects;
+  {
+    ApiWrapper<DetectServiceCvImpl> api(detectBuffers_);
+    auto detectService = api.getApi();
+    detectService->getDetectResult(m, objects);
+  }
+  filterPersons(objects, m.cols, m.rows);
+  int count = objects.size();
+  if (count <= 0) {
+    return 0;
+  }
+ 
+  std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfos;
+  for (auto &person : objects) {
+    int originy = person.y;
+    person.y = person.y > configParam_.detect.upLength ? person.y - configParam_.detect.upLength : 0;
+    int upLength = originy - person.y;
+    cv::Rect box(person.x, person.y, person.width, person.height * configParam_.detect.hatRate - upLength);
+    cv::Rect faceDetectBox(box);
+    cv::Mat faceImage(m, faceDetectBox);
+    std::vector<FaceLocation> faceList;
+    {
+      ApiWrapper<FaceApi> faceApiWrapper(faceBuffers_);
+      auto faceApi = faceApiWrapper.getApi();
+      faceApi->getLocations(faceImage, faceList);
+    }
+    auto boxDetect = box;
+    cv::Rect helmetBox;
+    bool valid = getHelmetBox(faceList, faceImage.cols, faceImage.rows, helmetBox);
+    if (valid) {
+      box = helmetBox;
+      faceImage = cv::Mat(faceImage, helmetBox);
+      box.x  += boxDetect.x;
+      box.y  += boxDetect.y;
+    }
+    std::shared_ptr<HelmetCheckInfo> checkInfo 
+      = std::make_shared<HelmetCheckInfo>();
+    checkInfo->rect = box;
+    checkInfo->personBox = cv::Rect(person.x, person.y, person.width, person.height / 2); 
+    checkInfo->personImage = faceImage;
+    checkInfos.push_back(checkInfo);
+  }
+  LOG(INFO) << checkInfos.size();
+  HelmetCheckResult checkResult;
+  ObjectDetectResult detectResult;
+  ObjectDetectResult personResult;
+  for (int personIndex = 0; personIndex < checkInfos.size(); personIndex++) {
+    helmetControlInfo_->checkHelmet(checkInfos[personIndex]->personImage, checkResult); 
+   detectResult.score = 100 *checkResult.score;
+   personResult.x = objects[personIndex].x;
+   personResult.y = objects[personIndex].y;
+   personResult.width = objects[personIndex].width;
+   personResult.height = objects[personIndex].height;
+   personResult.score = objects[personIndex].score * 100;
+   detectResult.x = 
+     checkInfos[personIndex]->rect.x;
+   detectResult.y = checkInfos[personIndex]->rect.y;
+   detectResult.width = checkInfos[personIndex]->rect.width;
+   detectResult.height = checkInfos[personIndex]->rect.height;
+   detectResult.category = checkResult.name;
+   std::swap(detectResult.x, personResult.x);
+   std::swap(detectResult.y, personResult.y);
+   std::swap(detectResult.height, personResult.height);
+   std::swap(detectResult.width, personResult.width);
+   result[0].push_back(detectResult); 
+   result[1].push_back(personResult); 
+  }
+  return 0;
 }
 
 } //namespace ktrack

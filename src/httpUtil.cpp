@@ -51,7 +51,6 @@
 #include "json/json.h"
 #include "event2/http.h"
 
-
 #ifdef _WIN32
 #ifndef stat
 #define stat _stat
@@ -74,38 +73,24 @@
 #include <glog/logging.h>
 #include <iterator>
 #include <regex>
+//#include "faceAgent.h"
+//#include "faceService.h"
 
 void sendResponse(int errorCode, 
     std::string msg,  
     struct evhttp_request *&req, 
     evbuffer *&response) {
   Json::Value root;
-  std::stringstream ss;
-  ss << errorCode;
-  root["error_code"] = ss.str();
+//  std::stringstream ss;
+ // ss << errorCode;
+ // std::string tmp;
+ // tmp = ss.str();
+  //root["error_code"] = tmp;
+  root["error_code"] = errorCode;
   root["error_msg"] = msg;
   std::string s = root.toStyledString();
   evbuffer_add_printf(response, "%s", s.c_str());
   LOG(ERROR) << s;
-  evhttp_send_reply(req, 200, "OK", response);
-}
-
-template<class vvalue>
-void sendResponseResult(int errorCode, 
-    std::string msg,
-    const std::map<std::string, vvalue> &paraMap,
-    struct evhttp_request *&req, 
-    evbuffer *&response) {
-  Json::Value root;
-  std::stringstream ss;
-  ss << errorCode;
-  root["error_code"] = ss.str();
-  root["error_msg"] = msg;
-  for (auto it = paraMap.begin(); it != paraMap.end(); it++) {
-    root[it->first] = it->second;
-  }
-  std::string s = root.toStyledString();
-  evbuffer_add_printf(response, "%s", s.c_str());
   evhttp_send_reply(req, 200, "OK", response);
 }
 
@@ -134,4 +119,12 @@ std::string getBodyStr(struct evhttp_request *req) {
   return result;
 }
 
+ bool getBodyJson(struct evhttp_request *req, Json::Value &root) {
+   std::string body = getBodyStr(req);
+   if (body == "") {
+     return false;
+   }
+   Json::Reader reader(Json::Features::strictMode());
+   return reader.parse(body, root);
+}
 

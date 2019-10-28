@@ -11,13 +11,19 @@ using  apache::thrift::transport::TTransportException;
 using  apache::thrift::TException;
 using  apache::thrift::transport::TBufferedTransport;
 
-void HelmetClientDelegation::init(const kunyan::Config &config) {
-  std::string server = config.get("helmet", "server");
-  std::string portStr  = config.get("helmet", "port");
-  std::stringstream ss;
-  int port = 0;
-  ss << portStr;
-  ss >> port;
+void HelmetClientDelegation::init(int number, const kunyan::Config &config) {
+
+}
+
+void HelmetClientDelegation::init(
+    const kunyan::Config &config,
+    const std::string &tag) {
+    int port = 0;
+    std::stringstream ss;
+    std::string server = config.get(tag, "server");
+    std::string portStr  = config.get(tag, "port");
+    ss << portStr;
+    ss >> port;
   server_ = server;
   port_ = port;
   initClient();

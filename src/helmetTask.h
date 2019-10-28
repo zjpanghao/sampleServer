@@ -11,6 +11,7 @@
 #include "helmetEntity.h"
 struct HelmetCheckInfo {
   cv::Rect rect;
+  cv::Rect personBox;
   cv::Mat personImage;
   HelmetCheckResult result;
 };

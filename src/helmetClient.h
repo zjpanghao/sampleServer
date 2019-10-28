@@ -6,7 +6,9 @@
 class HelmetClientDelegation {
  public:
    bool initClient(); 
-   void init(const kunyan::Config &config);
+   void init(int number, const kunyan::Config &config);
+   void init(const kunyan::Config &config,
+            const std::string &tag);
    int errorConnectCount_{0};
    long errorTime_{0};
    std::shared_ptr<HelmetClient>  client();

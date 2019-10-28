@@ -11,6 +11,8 @@
 #include <condition_variable>
 #include "config/config.h"
 #include "trackControl.h"
+#include "faceEntity.h"
+#include <list>
 
 class DBPool;
 namespace kface {
@@ -20,6 +22,9 @@ class FaceService {
  public:
   static FaceService& getFaceService();
   FaceService();
+  int detect(int caseId,
+      const std::string &image, 
+      std::vector<ktrack::ObjectDetectResult> result[]);
   void init(const kunyan::Config &config); 
   //std::shared_ptr<News> getLatestNews();
   std::string getLatestImage(int caseId);

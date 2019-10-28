@@ -38,8 +38,15 @@ int TrackControl::init() {
   ss << config_.get("helmet", "num");
   ss >> helmetNumbers;
 
-
-  helmetClients_.init(helmetNumbers, config_);
+  for (int i = 0; i < CLIENTS_NUM; i++) {
+    std::stringstream ss;
+    ss << "helmet" << i;
+    if (config_.get(ss.str(), "server") != "") {
+      LOG(INFO) <<"init helmet:" <<ss.str();
+        helmetClients_[i].init(helmetNumbers,
+        config_, ss.str());
+    }
+  }
   executorService_ = std::make_shared<ExecutorService>(helmetNumbers);
   
   std::string value =  config_.get("helmet", "confidence");
@@ -67,6 +74,14 @@ int TrackControl::init() {
   if (value != "") {
     ss << value;
     ss >> configParam_.detect.heightWidthThresh;
+  }
+  value =  config_.get("detect", "upLength");
+  configParam_.detect.upLength = 10;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.detect.upLength;
   }
   value =  config_.get("detect", "hatRate");
   configParam_.detect.hatRate = 0.2;
@@ -128,6 +143,7 @@ std::shared_ptr<Track> TrackControl::getTrackById(int caseId) {
 }
 
 void TrackControl::ProcessMessage(const char *buf, int len) {
+  return;
   std::string recv(buf, len);
   Json::Value root;
   Json::Reader reader;
@@ -136,7 +152,8 @@ void TrackControl::ProcessMessage(const char *buf, int len) {
     return;
   }
   int  caseId = -1;
-  getJsonInt(root, "caseId", caseId);
+  //caseId = root["caseId"].asInt();
+  JsonUtil::getJsonInt(root, "caseId", caseId);
   if (caseId == -1) {
     LOG(ERROR) << "error recv command message, no caseId found";
   }
@@ -146,12 +163,38 @@ void TrackControl::ProcessMessage(const char *buf, int len) {
   std::stringstream ss;
   std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, 
                                                         faceBuffers_, 
-                                                        helmetClients_,
+                                                        helmetClients_[caseId % CLIENTS_NUM],
                                                         configParam_);
   std::string server = config_.get("kafka", "server");
   ss.clear();
   ss.str("");
   ss << "face_" << caseId;
+  if (0 != track->init(executorService_, server, ss.str(), "group_face")) {
+    LOG(ERROR) << "track start error!";
+    return;
+  }
+  trackMp_.insert(std::make_pair(caseId, track));
+  LOG(INFO) << "add track caseId:" << caseId;
+}
+
+
+void TrackControl::startTrack(int number,
+                              bool withKafka) {
+  int caseId = number % 20;
+  if (trackMp_.count(caseId) != 0) {
+    return;
+  }
+  std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, 
+                                                        faceBuffers_, 
+                                                        helmetClients_[caseId % CLIENTS_NUM],
+                                                        configParam_);
+  std::string server = config_.get("kafka", "server");
+  
+  std::stringstream ss;
+  ss <<"face_" << caseId;
+  if (!withKafka) {
+    server = "";
+  }
   if (0 != track->init(executorService_, server, ss.str(), "group_face")) {
     LOG(ERROR) << "track start error!";
     return;
