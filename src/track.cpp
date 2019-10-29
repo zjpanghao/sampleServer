@@ -70,7 +70,7 @@ void Track::filterPersons(std::vector<ObjectDetectResult> &persons,
       it =persons.erase(it);
     } else {
       if (it->height < it->width * configParam_.detect.heightWidthThresh) {
-        LOG(INFO) << "little :" << configParam_.detect.heightWidthThresh;
+        LOG(INFO) << "height width rate little than:" << configParam_.detect.heightWidthThresh;
         it =persons.erase(it);
         continue;
       }
@@ -216,8 +216,6 @@ void Track::ProcessMessage(const char *buf, int len) {
   LOG(INFO) << topic_ <<  " faces:" << checkInfos.size() 
     << " dure:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   
-  //cv::imwrite(file.str(), showImage);
-  //m = showImage;
 }
 
 int Track::detect(const cv::Mat &m,

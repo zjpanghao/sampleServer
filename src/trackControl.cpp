@@ -49,7 +49,7 @@ int TrackControl::init() {
   }
   executorService_ = std::make_shared<ExecutorService>(helmetNumbers);
   
-  std::string value =  config_.get("helmet", "confidence");
+  std::string value =  config_.get("detect", "helmetConfidence");
   configParam_.helmet.confidence = 0.8;
   ss.clear();
   ss.str("");
@@ -101,7 +101,7 @@ int TrackControl::init() {
     ss >> configParam_.detect.confidence;
   }
 
-  value =  config_.get("helmet", "record");
+  value =  config_.get("detect", "record");
   configParam_.helmet.record = false;
   ss.clear();
   ss.str("");
@@ -184,13 +184,64 @@ void TrackControl::startTrack(int number,
   if (trackMp_.count(caseId) != 0) {
     return;
   }
+  ConfigParam configParam = configParam_;
   std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, 
                                                         faceBuffers_, 
                                                         helmetClients_[caseId % CLIENTS_NUM],
-                                                        configParam_);
+                                                        configParam);
+  std::stringstream ss;
+  ss <<"detect" << caseId;
+  std::string detect = ss.str();
+  std::string value;
+  value =  config_.get(detect, "upLength");
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam.detect.upLength;
+  }
+
+  value =  config_.get(detect, "confidence");
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam.detect.confidence;
+  }
+
+  value =  config_.get(detect, "hatRate");
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam.detect.hatRate;
+  }
+
+  value =  config_.get(detect, "heightWidthThresh");
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam.detect.heightWidthThresh;
+  }
+  value =  config_.get(detect, "helmetConfidence");
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam.helmet.confidence;
+  }
+  value =  config_.get(detect, "record");
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam.helmet.record;
+    LOG(INFO) << "set recored" << configParam.helmet.record;
+  }
+
   std::string server = config_.get("kafka", "server");
   
-  std::stringstream ss;
   ss <<"face_" << caseId;
   if (!withKafka) {
     server = "";

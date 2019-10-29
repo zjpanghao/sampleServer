@@ -68,7 +68,7 @@ class Track : public KafkaConsumer {
    std::shared_ptr<HelmetMatData> matData_;
    std::shared_ptr<HelmetControlInfo> helmetControlInfo_;
    std::string topic_;
-   const ConfigParam &configParam_;
+   ConfigParam configParam_;
 };
 
 } // namespace

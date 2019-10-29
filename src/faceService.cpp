@@ -30,15 +30,20 @@ int FaceService::detect(int caseId,
   return track->detect(mo, result);
 }
 void FaceService::init(const kunyan::Config &config) {
-  //std::shared_ptr<DBPool> pool(new DBPool());
-  // pool->PoolInit(new DataSource(config));
-  //newsRepo_.reset(new FaceRepo(pool));
   trackControl_ = std::make_shared<ktrack::TrackControl>(config);
   trackControl_->init();
-  trackControl_->startTrack(0, false);
-  trackControl_->startTrack(3, true);
-  //track_->init(config);
-  //start_ = true;
+  std::string channels = 
+    config.get("detect", "channels");
+  int channelNum = 20;
+  if (channels != "") {
+    std::stringstream ss;
+    ss << channels;
+    ss >>  channelNum;
+  }
+  // use 3 for debug
+  for (int i = 0; i < channelNum; i++) {
+    trackControl_->startTrack(0, i == 3);
+  }
 }
 
 int FaceService::trackStart() {
