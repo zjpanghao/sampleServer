@@ -26,6 +26,13 @@ void HelmetClientDelegation::init(
     ss >> port;
   server_ = server;
   port_ = port;
+  ss.clear();
+  ss.str("");
+  std::string timeout = config.get(tag, "recv_timeout");
+  if (timeout != "") {
+    ss << timeout;
+    ss >> recvTimeout_;
+  } 
   initClient();
 }
 
@@ -34,7 +41,7 @@ bool HelmetClientDelegation::initClient() {
   errorTime_ = time(NULL);
   status_ = false;
   std::shared_ptr<TTransport> socket(new TSocket(server_, port_));
-  ((TSocket*)socket.get())->setRecvTimeout(5000);
+  ((TSocket*)socket.get())->setRecvTimeout(recvTimeout_ * 1000);
   std::shared_ptr<TTransport> transport(new TBufferedTransport(socket));
   std::shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
   client_ = std::make_shared<HelmetClient>(protocol);
@@ -54,7 +61,7 @@ std::shared_ptr<HelmetClient>  HelmetClientDelegation::client() {
     try {
       client_->pingHelmet();
     } catch (TTransportException &e) {
-      LOG(ERROR) << e.what();
+      LOG(ERROR) <<server_ << port_ <<  e.what();
       return client;
     } catch (TException &e) {
       LOG(ERROR) << e.what();

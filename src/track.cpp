@@ -18,11 +18,11 @@ using  apache::thrift::transport::TBufferedTransport;
 
 #define BORDER_WIDTH 150
 namespace ktrack {
-Track::Track(ApiBuffer<DetectServiceCvImpl> &apiBuffers,
+Track::Track(int trackId, ApiBuffer<DetectServiceCvImpl> &apiBuffers,
     ApiBuffer<FaceApi> &faceBuffers, 
     ApiBuffer<HelmetClientDelegation> &clients, 
     const ConfigParam &configParam) 
-    : detectBuffers_(apiBuffers), faceBuffers_(faceBuffers), clients_(clients), videoInfo_(std::make_shared<VideoInfo>()), configParam_(configParam){
+    : trackId_(trackId), detectBuffers_(apiBuffers), faceBuffers_(faceBuffers), clients_(clients), videoInfo_(std::make_shared<VideoInfo>()), configParam_(configParam){
 }
 
 Track::~Track() {
@@ -54,6 +54,8 @@ if (kafkaServer != "") {
   matData_->error[1] = cv::imread("error.jpg", 0);
   helmetControlInfo_ = std::make_shared<HelmetControlInfo>(matData_, clients_,videoInfo_);
   helmetControlInfo_->setConfidence(configParam_.helmet.confidence);
+  bgsub_=cv::createBackgroundSubtractorMOG2();
+  bgsub_->setVarThreshold(8);
   return 0;
 }
 
@@ -70,7 +72,6 @@ void Track::filterPersons(std::vector<ObjectDetectResult> &persons,
       it =persons.erase(it);
     } else {
       if (it->height < it->width * configParam_.detect.heightWidthThresh) {
-        LOG(INFO) << "height width rate little than:" << configParam_.detect.heightWidthThresh;
         it =persons.erase(it);
         continue;
       }
@@ -148,6 +149,10 @@ void Track::ProcessMessage(const char *buf, int len) {
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
   //cv::Mat m(mo, cv::Rect(0, 0, mo.cols * 1 / 3 + 200 , mo.rows));
   cv::Mat m = mo;//.clone();
+  if (!moveDetect(mo)) {
+    videoInfo_->updateImage(mo);
+    return;
+  }
   std::vector<ObjectDetectResult> objects;
   {
     ApiWrapper<DetectServiceCvImpl> api(detectBuffers_);
@@ -215,11 +220,13 @@ void Track::ProcessMessage(const char *buf, int len) {
   auto end = std::chrono::steady_clock::now();
   LOG(INFO) << topic_ <<  " faces:" << checkInfos.size() 
     << " dure:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  
 }
 
 int Track::detect(const cv::Mat &m,
       std::vector<ObjectDetectResult> result[]) {
+  if (!moveDetect(m)) {
+    return 0;
+  }
   std::vector<ObjectDetectResult> objects;
   {
     ApiWrapper<DetectServiceCvImpl> api(detectBuffers_);
@@ -268,6 +275,9 @@ int Track::detect(const cv::Mat &m,
   ObjectDetectResult personResult;
   for (int personIndex = 0; personIndex < checkInfos.size(); personIndex++) {
     helmetControlInfo_->checkHelmet(checkInfos[personIndex]->personImage, checkResult); 
+   if (checkResult.score < configParam_.helmet.confidence) {
+     continue;
+   }
    detectResult.score = 100 *checkResult.score;
    personResult.x = objects[personIndex].x;
    personResult.y = objects[personIndex].y;
@@ -288,6 +298,26 @@ int Track::detect(const cv::Mat &m,
    result[1].push_back(personResult); 
   }
   return 0;
+}
+
+bool Track::moveDetect(const cv::Mat &m) {
+  cv::Mat bgmask;
+  bgsub_->apply(m, bgmask, 0.9); 
+  cv::erode(bgmask, bgmask, cv::Mat());
+  double rate = 0.0;
+  int whiteCount = 0;
+  for (int i = 0; i < m.rows; i++) {
+    const uchar *ptr = m.ptr(i);
+    const uchar *end = ptr + m.cols;
+    while (ptr < end) {
+      if (*ptr++ == 255) {
+        whiteCount++;
+      }
+    }
+  }
+  rate = (double)whiteCount / (m.rows * m.cols);
+  //LOG(INFO) << "caseId:" <<trackId_ <<"rate is:" <<rate;;
+  return rate > 0.003;
 }
 
 } //namespace ktrack

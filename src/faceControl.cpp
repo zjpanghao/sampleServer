@@ -102,7 +102,6 @@ void FaceControl::helmetDetectCb(struct evhttp_request *req, void *arg) {
   int caseId;
   JsonUtil::getJsonStringValue(root, "image", data);
   JsonUtil::getJsonInt(root, "caseId", caseId);
-  LOG(INFO) << "case id :" << caseId; 
   if (data.empty()) {
     rc = -4;
     sendResponse(rc, "image error", req, response);

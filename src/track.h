@@ -17,12 +17,14 @@
 #include "threadpool/thread_pool.h"
 #include "helmetClient.h"
 #include "videoInfo.h"
+#include <opencv2/video/background_segm.hpp>
 struct HelmetMatData;
 class HelmetControlInfo;
 namespace ktrack {
 class Track : public KafkaConsumer {
  public:
-   Track(ApiBuffer<DetectServiceCvImpl> &detectApiBuffers,
+   Track(int trackId, 
+           ApiBuffer<DetectServiceCvImpl> &detectApiBuffers,
            ApiBuffer<FaceApi> &faceApiBuffers, 
            ApiBuffer<HelmetClientDelegation> &helmetClients,
            const ConfigParam &configParam);
@@ -39,6 +41,7 @@ class Track : public KafkaConsumer {
    cv::Mat getLatestImage();
    int detect(const cv::Mat &m,
       std::vector<ObjectDetectResult> result[]);
+   bool moveDetect(const cv::Mat &m);
 
  private:
    void filterPersons(std::vector<ObjectDetectResult> &persons, 
@@ -60,6 +63,7 @@ class Track : public KafkaConsumer {
   // std::unique_ptr<kface::DetectService> detectService_;
    cv::Mat right_[2];
    cv::Mat error_[2];
+   int trackId_{-1};
    ApiBuffer<DetectServiceCvImpl> &detectBuffers_;
    ApiBuffer<FaceApi> &faceBuffers_;
    ApiBuffer<HelmetClientDelegation> &clients_;
@@ -68,6 +72,7 @@ class Track : public KafkaConsumer {
    std::shared_ptr<HelmetMatData> matData_;
    std::shared_ptr<HelmetControlInfo> helmetControlInfo_;
    std::string topic_;
+   cv::Ptr<cv::BackgroundSubtractorMOG2> bgsub_;
    ConfigParam configParam_;
 };
 

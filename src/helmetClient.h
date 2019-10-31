@@ -22,6 +22,7 @@ class HelmetClientDelegation {
  private:
    std::shared_ptr<HelmetClient> client_;
    std::string server_;
+   int recvTimeout_{15};
    int port_;
 };
 

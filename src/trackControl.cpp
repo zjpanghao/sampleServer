@@ -161,7 +161,8 @@ void TrackControl::ProcessMessage(const char *buf, int len) {
     return;
   }
   std::stringstream ss;
-  std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, 
+  std::shared_ptr<Track> track= std::make_shared<Track>(caseId,
+    detectBuffers_, 
                                                         faceBuffers_, 
                                                         helmetClients_[caseId % CLIENTS_NUM],
                                                         configParam_);
@@ -185,7 +186,8 @@ void TrackControl::startTrack(int number,
     return;
   }
   ConfigParam configParam = configParam_;
-  std::shared_ptr<Track> track= std::make_shared<Track>(detectBuffers_, 
+  std::shared_ptr<Track> track= std::make_shared<Track>(caseId, 
+    detectBuffers_, 
                                                         faceBuffers_, 
                                                         helmetClients_[caseId % CLIENTS_NUM],
                                                         configParam);

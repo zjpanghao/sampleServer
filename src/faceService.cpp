@@ -42,7 +42,7 @@ void FaceService::init(const kunyan::Config &config) {
   }
   // use 3 for debug
   for (int i = 0; i < channelNum; i++) {
-    trackControl_->startTrack(0, i == 3);
+    trackControl_->startTrack(i, i == 3);
   }
 }
 
