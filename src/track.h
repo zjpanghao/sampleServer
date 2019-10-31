@@ -41,7 +41,8 @@ class Track : public KafkaConsumer {
    cv::Mat getLatestImage();
    int detect(const cv::Mat &m,
       std::vector<ObjectDetectResult> result[]);
-   bool moveDetect(const cv::Mat &m);
+   bool moveDetect(const cv::Mat &m,
+                  cv::Mat &bgmask);
 
  private:
    void filterPersons(std::vector<ObjectDetectResult> &persons, 

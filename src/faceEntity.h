@@ -18,6 +18,7 @@ struct DetectParam {
   double widthHeightThresh; 
   double heightWidthThresh; 
   int upLength;
+  double moveDetectRate;
 };
 
 struct FaceParam {

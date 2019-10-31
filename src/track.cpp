@@ -55,7 +55,7 @@ if (kafkaServer != "") {
   helmetControlInfo_ = std::make_shared<HelmetControlInfo>(matData_, clients_,videoInfo_);
   helmetControlInfo_->setConfidence(configParam_.helmet.confidence);
   bgsub_=cv::createBackgroundSubtractorMOG2();
-  bgsub_->setVarThreshold(8);
+  bgsub_->setVarThreshold(18);
   return 0;
 }
 
@@ -149,8 +149,9 @@ void Track::ProcessMessage(const char *buf, int len) {
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
   //cv::Mat m(mo, cv::Rect(0, 0, mo.cols * 1 / 3 + 200 , mo.rows));
   cv::Mat m = mo;//.clone();
-  if (!moveDetect(mo)) {
-    videoInfo_->updateImage(mo);
+  cv::Mat bgmask;
+  if (moveDetect(mo, bgmask)) {
+    videoInfo_->updateImage(bgmask);
     return;
   }
   std::vector<ObjectDetectResult> objects;
@@ -224,7 +225,8 @@ void Track::ProcessMessage(const char *buf, int len) {
 
 int Track::detect(const cv::Mat &m,
       std::vector<ObjectDetectResult> result[]) {
-  if (!moveDetect(m)) {
+  cv::Mat bgmask;
+  if (!moveDetect(m, bgmask)) {
     return 0;
   }
   std::vector<ObjectDetectResult> objects;
@@ -300,24 +302,25 @@ int Track::detect(const cv::Mat &m,
   return 0;
 }
 
-bool Track::moveDetect(const cv::Mat &m) {
-  cv::Mat bgmask;
-  bgsub_->apply(m, bgmask, 0.9); 
+bool Track::moveDetect(const cv::Mat &m,
+    cv::Mat &bgmask) {
+  bgsub_->apply(m, bgmask); 
   cv::erode(bgmask, bgmask, cv::Mat());
   double rate = 0.0;
   int whiteCount = 0;
-  for (int i = 0; i < m.rows; i++) {
-    const uchar *ptr = m.ptr(i);
-    const uchar *end = ptr + m.cols;
+  for (int i = 0; i < bgmask.rows; i++) {
+    const uchar *ptr = bgmask.ptr(i);
+    const uchar *end = ptr + bgmask.cols;
     while (ptr < end) {
-      if (*ptr++ == 255) {
+      if (*ptr > 0) {
         whiteCount++;
       }
+      ptr++;
     }
   }
-  rate = (double)whiteCount / (m.rows * m.cols);
-  //LOG(INFO) << "caseId:" <<trackId_ <<"rate is:" <<rate;;
-  return rate > 0.003;
+  rate = (double)whiteCount / (bgmask.rows * bgmask.cols);
+  LOG(INFO) << "caseId:" <<trackId_ <<"rate is:" <<rate;;
+  return rate > configParam_.detect.moveDetectRate;
 }
 
 } //namespace ktrack

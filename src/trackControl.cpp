@@ -108,7 +108,15 @@ int TrackControl::init() {
   if (value != "") {
     ss << value;
     ss >> configParam_.helmet.record;
-    LOG(INFO) << "set recored" << configParam_.helmet.record;
+  }
+  // movedetect
+  value =  config_.get("detect", "moveDetectRate");
+  configParam_.detect.moveDetectRate = 0.003;
+  ss.clear();
+  ss.str("");
+  if (value != "") {
+    ss << value;
+    ss >> configParam_.detect.moveDetectRate;
   }
 
   value =  config_.get("face", "confidence");
