@@ -1,6 +1,7 @@
 #ifndef INCLUDE_TRACK_H
 #define INCLUDE_TRACK_H
 #include <memory>
+#include <atomic>
 #include <opencv2/opencv.hpp>
 #include "pkafka/kafka_consumer.h"
 #include <mutex>
@@ -23,6 +24,10 @@ class HelmetControlInfo;
 namespace ktrack {
 class Track : public KafkaConsumer {
  public:
+   enum TrackStatus  {
+        BUSY,
+        IDLE
+   };
    Track(int trackId, 
            ApiBuffer<DetectServiceCvImpl> &detectApiBuffers,
            ApiBuffer<FaceApi> &faceApiBuffers, 
@@ -43,6 +48,7 @@ class Track : public KafkaConsumer {
       std::vector<ObjectDetectResult> result[]);
    bool moveDetect(const cv::Mat &m,
                   cv::Mat &bgmask);
+   void initMoveDetect();
 
  private:
    void filterPersons(std::vector<ObjectDetectResult> &persons, 
@@ -75,6 +81,8 @@ class Track : public KafkaConsumer {
    std::string topic_;
    cv::Ptr<cv::BackgroundSubtractorMOG2> bgsub_;
    ConfigParam configParam_;
+   std::atomic<int> status_{0};
+   std::once_flag initFlag_;
 };
 
 } // namespace

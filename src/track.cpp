@@ -30,6 +30,13 @@ Track::~Track() {
   LOG(INFO) << "track task exit";
 }
 
+void Track::initMoveDetect() {
+  bgsub_=cv::createBackgroundSubtractorMOG2();
+  bgsub_->setVarThreshold(18);
+  bgsub_->setDetectShadows(false);
+  LOG(INFO) <<"shadow:" <<bgsub_->getDetectShadows();
+}
+
 int Track::init(std::shared_ptr<ExecutorService> executorService,
     const std::string &kafkaServer,
     const std::string &topic,
@@ -54,8 +61,6 @@ if (kafkaServer != "") {
   matData_->error[1] = cv::imread("error.jpg", 0);
   helmetControlInfo_ = std::make_shared<HelmetControlInfo>(matData_, clients_,videoInfo_);
   helmetControlInfo_->setConfidence(configParam_.helmet.confidence);
-  bgsub_=cv::createBackgroundSubtractorMOG2();
-  bgsub_->setVarThreshold(18);
   return 0;
 }
 
@@ -150,7 +155,7 @@ void Track::ProcessMessage(const char *buf, int len) {
   //cv::Mat m(mo, cv::Rect(0, 0, mo.cols * 1 / 3 + 200 , mo.rows));
   cv::Mat m = mo;//.clone();
   cv::Mat bgmask;
-  if (moveDetect(mo, bgmask)) {
+  if (!moveDetect(mo, bgmask)) {
     videoInfo_->updateImage(bgmask);
     return;
   }
@@ -246,7 +251,7 @@ int Track::detect(const cv::Mat &m,
     int originy = person.y;
     person.y = person.y > configParam_.detect.upLength ? person.y - configParam_.detect.upLength : 0;
     int upLength = originy - person.y;
-    cv::Rect box(person.x, person.y, person.width, person.height * configParam_.detect.hatRate - upLength);
+    cv::Rect box(person.x, person.y, person.width, person.height * configParam_.detect.hatRate + upLength);
     cv::Rect faceDetectBox(box);
     cv::Mat faceImage(m, faceDetectBox);
     std::vector<FaceLocation> faceList;
@@ -304,7 +309,15 @@ int Track::detect(const cv::Mat &m,
 
 bool Track::moveDetect(const cv::Mat &m,
     cv::Mat &bgmask) {
+  std::call_once(initFlag_, &Track::initMoveDetect, this);
+  int status = 0;
+  bool f = status_.compare_exchange_strong(status, 1);
+  if (!f)  {
+    LOG(INFO) <<  "bgmode already in processing"; 
+    return false;
+  }
   bgsub_->apply(m, bgmask); 
+  status_ = 0;
   cv::erode(bgmask, bgmask, cv::Mat());
   double rate = 0.0;
   int whiteCount = 0;
@@ -319,7 +332,7 @@ bool Track::moveDetect(const cv::Mat &m,
     }
   }
   rate = (double)whiteCount / (bgmask.rows * bgmask.cols);
-  LOG(INFO) << "caseId:" <<trackId_ <<"rate is:" <<rate;;
+  //LOG(INFO) << "caseId:" <<trackId_ <<"rate is:" <<rate;;
   return rate > configParam_.detect.moveDetectRate;
 }
 

@@ -29,6 +29,7 @@ int FaceService::detect(int caseId,
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
   return track->detect(mo, result);
 }
+
 void FaceService::init(const kunyan::Config &config) {
   trackControl_ = std::make_shared<ktrack::TrackControl>(config);
   trackControl_->init();
