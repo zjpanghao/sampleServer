@@ -27,7 +27,7 @@ int FaceService::detect(int caseId,
   std::vector<unsigned char> data;
   Base64::getBase64().decode(image, data);
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
-  return track->detect(mo, result);
+  return track->detect(mo, true, result);
 }
 
 void FaceService::init(const kunyan::Config &config) {

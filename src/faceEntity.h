@@ -17,7 +17,7 @@ struct DetectParam {
   double hatRate;
   double widthHeightThresh; 
   double heightWidthThresh; 
-  int upLength;
+  double upLength;
   double moveDetectRate;
 };
 

@@ -76,7 +76,7 @@ int TrackControl::init() {
     ss >> configParam_.detect.heightWidthThresh;
   }
   value =  config_.get("detect", "upLength");
-  configParam_.detect.upLength = 10;
+  configParam_.detect.upLength = 0.2;
   ss.clear();
   ss.str("");
   if (value != "") {
