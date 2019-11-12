@@ -41,24 +41,6 @@ cv::Mat Track::getLatestImage() {
   return videoInfo_->getImage();
 }
 
-void Track::filterPersons(std::vector<ObjectDetectResult> &persons,
-                                int maxWidth, int maxHeight) {
-  auto it = persons.begin();
-  while (it != persons.end()) {
-    if (it->category != "person" || it->score < configParam_.detect.confidence || !rectValid(*it,
-    maxWidth, maxHeight)) {
-      it =persons.erase(it);
-    } else {
-      if (it->height < it->width * configParam_.detect.heightWidthThresh) {
-        LOG(INFO) << "person widthRate too high:" << (double)it->width/it->height;
-        it =persons.erase(it);
-        continue;
-      }
-      it++;
-    }
-  }
-}
-
 bool Track::getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int maxHeight, cv::Rect &rect) {
   auto it = faces.begin();
   while (it != faces.end()) {
@@ -87,29 +69,6 @@ bool Track::getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int max
     it++;
   }
   return false;
-}
-
-bool Track::rectValid(const ObjectDetectResult &object, int maxWidth, int maxHeight) {
-  if (object.x < BORDER_WIDTH) {
-    return false;
-  }
-
-  if (object.x > maxWidth - BORDER_WIDTH) {
-    return false;
-  }
-
-  if (object.y > maxHeight - BORDER_WIDTH || object.y < 0) {
-    return false;
-  }
-
-  if (object.width  + object.x + BORDER_WIDTH> maxWidth) {
-    return false;
-  }
-
-  if (object.height > maxHeight - object.y) {
-    return false;
-  }
-  return true;
 }
 
 double Track::getWhiteRate(const cv::Mat &m) {

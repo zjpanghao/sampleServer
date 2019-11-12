@@ -45,10 +45,6 @@ class Track  {
        const std::vector<ObjectDetectResult> results[]);
 
  private:
-   void filterPersons(std::vector<ObjectDetectResult> &persons, 
-                            int maxWidth, int maxHeight);
-   bool rectValid(const ObjectDetectResult &object, 
-                      int maxWidth, int maxHeight);
    bool getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int maxHeight, cv::Rect &rect);
    int index_{0};
    std::shared_ptr<VideoInfo> videoInfo_{nullptr};//{std::make_shared<VideoInfo>()};
