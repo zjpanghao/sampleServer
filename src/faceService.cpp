@@ -27,7 +27,7 @@ int FaceService::detect(int caseId,
   std::vector<unsigned char> data;
   Base64::getBase64().decode(image, data);
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
-  return track->detect(mo, true, result);
+  return track->detect(mo, result);
 }
 
 void FaceService::init(const kunyan::Config &config) {
@@ -43,16 +43,8 @@ void FaceService::init(const kunyan::Config &config) {
   }
   // use 3 for debug
   for (int i = 0; i < channelNum; i++) {
-    trackControl_->startTrack(i, i == 3);
+    trackControl_->startTrack(i);
   }
-}
-
-int FaceService::trackStart() {
-  return 0;
-}
-
-int FaceService::trackStop() {
-  return 0;
 }
 
 std::string FaceService::getLatestImage(int caseId) {

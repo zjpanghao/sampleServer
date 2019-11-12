@@ -72,7 +72,6 @@ void FaceControl::trackImageCb(struct evhttp_request *req, void *arg) {
 void FaceControl::trackStopCb(struct evhttp_request *req, void *arg) {
   FaceService &service = FaceService::getFaceService(); 
   evbuffer *response = evbuffer_new();
-  service.trackStop();
   evbuffer_add_printf(response, "%s", "ok");
   evhttp_send_reply(req, 200, "OK", response);
 }

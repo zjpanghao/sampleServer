@@ -15,10 +15,10 @@ struct ObjectDetectResult {
 struct DetectParam {
   double confidence;
   double hatRate;
-  double widthHeightThresh; 
   double heightWidthThresh; 
   double upLength;
   double moveDetectRate;
+  double headAreaRate;
 };
 
 struct FaceParam {

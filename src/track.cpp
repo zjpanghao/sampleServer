@@ -8,6 +8,8 @@
 #include "detectService.h"
 #include "detectServiceCvImpl.h"
 #include "helmetTask.h"
+#include "moveDetect.h"
+#include "trackFilter.h"
 
 using  apache::thrift::protocol::TProtocol;
 using  apache::thrift::protocol::TBinaryProtocol;
@@ -26,40 +28,11 @@ Track::Track(int trackId, ApiBuffer<DetectServiceCvImpl> &apiBuffers,
 }
 
 Track::~Track() {
-  stop();
-  LOG(INFO) << "track task exit";
 }
 
-void Track::initMoveDetect() {
-  bgsub_=cv::createBackgroundSubtractorMOG2();
-  bgsub_->setVarThreshold(18);
-  bgsub_->setDetectShadows(false);
-  LOG(INFO) <<"shadow:" <<bgsub_->getDetectShadows();
-}
-
-int Track::init(std::shared_ptr<ExecutorService> executorService,
-    const std::string &kafkaServer,
-    const std::string &topic,
-    const std::string &group
-    ) {
-  executorService_ = executorService;
-  topic_ = topic;
-if (kafkaServer != "") {
-  int rc = Init(kafkaServer, topic, group);
-  if (rc == 0) {
-    rc |= StartAll();
-  }
-  if (rc != 0) {
-    return -1;
-  }
-}
-  index_ = 0;
-  matData_ = std::make_shared<HelmetMatData>();
-  matData_->right[0] = cv::imread("right.jpg");
-  matData_->error[0] = cv::imread("error.jpg");
-  matData_->right[1] = cv::imread("right.jpg", 0);
-  matData_->error[1] = cv::imread("error.jpg", 0);
-  helmetControlInfo_ = std::make_shared<HelmetControlInfo>(matData_, clients_,videoInfo_);
+int Track::init() {
+  moveDetect_ = std::make_shared<ObjectMoveDetect>();
+  helmetControlInfo_ = std::make_shared<HelmetControlInfo>(nullptr, clients_,videoInfo_);
   helmetControlInfo_->setConfidence(configParam_.helmet.confidence);
   return 0;
 }
@@ -77,6 +50,7 @@ void Track::filterPersons(std::vector<ObjectDetectResult> &persons,
       it =persons.erase(it);
     } else {
       if (it->height < it->width * configParam_.detect.heightWidthThresh) {
+        LOG(INFO) << "person widthRate too high:" << (double)it->width/it->height;
         it =persons.erase(it);
         continue;
       }
@@ -153,41 +127,11 @@ double Track::getWhiteRate(const cv::Mat &m) {
 
 }
 
-void Track::ProcessMessage(const char *buf, int len) {
-  //LOG(INFO) << "recv len:" << len << " tid:" << std::this_thread::get_id();
-  std::string recv(buf, len);
-  Json::Value root;
-  Json::Reader reader;
-  bool f = reader.parse(recv, root);
-  if (!f) {
-    return;
-  }
-  std::string image = root["image"].asString();
-  std::string dateTime = root["dateTime"].asString();
-  //LOG(INFO) << "dateTime:" << dateTime;
-  std::vector<unsigned char> data;
-  Base64::getBase64().decode(image, data);
-  cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
-  cv::Mat bgmask;
-  if (!moveDetect(mo, bgmask)) {
-    videoInfo_->updateImage(bgmask);
-    return;
-  }
-  std::vector<ObjectDetectResult> results[2];
-  detect(mo,false,results);
-  if (results[0].size() == 0) {
-    videoInfo_->updateImage(mo);
-    return;
-  }
-  LOG(INFO) << "FIND:" << results[0].size();
+void Track::doDrawWork(cv::Mat &mo, const cv::Mat &bgmask, const std::vector<ObjectDetectResult> results[]) {
   for (int i = 0; i < results[0].size(); i++) {
     cv::Rect rect(results[1][i].x, results[1][i].y,
         results[1][i].width, results[1][i].height);
     cv::Mat cutMask(bgmask, rect);
-    if (getWhiteRate(cutMask) < 0.3) {
-      LOG(INFO) << "CUT TOO HEIGHT ESCAPTE";
-      continue;
-    }
     std::stringstream ss;
     static int inx = 0;
     inx = (inx + 1) % 100;
@@ -231,29 +175,38 @@ void Track::ProcessMessage(const char *buf, int len) {
   ss << "cv" <<trackId_ << "/" << inx << ".jpg";
   cv::imwrite(ss.str().c_str(), mo);
   videoInfo_->updateImage(mo);
+}
 
+void Track::detectPersons(
+    const cv::Mat &m,
+    std::vector<ObjectDetectResult> &persons) {
+  ApiWrapper<DetectServiceCvImpl> api(detectBuffers_);
+  auto detectService = api.getApi();
+  detectService->getDetectResult(m, persons);
+  TrackFilter::instance()
+    .filterPersonScore(configParam_.detect.confidence, persons);
 }
 
 int Track::detect(const cv::Mat &m,
-      bool motion,
       std::vector<ObjectDetectResult> result[]) {
   cv::Mat bgmask;
-  if (motion) {
-    if (!moveDetect(m, bgmask)) {
-      return 0;
-    }
+  double rate;
+  if (!moveDetect_->moveDetect(m, 
+        bgmask,
+        rate) || 
+      rate < configParam_.detect.moveDetectRate) {
+    videoInfo_->updateImage(bgmask);
+    return 0;
   }
   std::vector<ObjectDetectResult> objects;
-  {
-    ApiWrapper<DetectServiceCvImpl> api(detectBuffers_);
-    auto detectService = api.getApi();
-    detectService->getDetectResult(m, objects);
-  }
-  filterPersons(objects, m.cols, m.rows);
+  detectPersons(m, objects);
+  TrackFilter::instance().filterBorder(BORDER_WIDTH, m.cols, m.rows, objects);
+  TrackFilter::instance().filterPersonAspect(configParam_.detect.heightWidthThresh, objects);
   int count = objects.size();
   if (count <= 0) {
     return 0;
   }
+  LOG(INFO) << trackId_ << " origin find " << objects.size() << "person";
  
   std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfos;
   for (auto &person : objects) {
@@ -294,12 +247,19 @@ int Track::detect(const cv::Mat &m,
   ObjectDetectResult personResult;
 
   for (int personIndex = 0; personIndex < checkInfos.size(); personIndex++) {
-    if (motion) {
       cv::Mat tmp(bgmask, checkInfos[personIndex]->rect);
-      if (getWhiteRate(tmp) < 0.3) {
-        LOG(INFO) << "CUT  TOO HEIGHT ESCAPSE";
+      double whiteRate;
+      if ((whiteRate = getWhiteRate(tmp)) < \
+          configParam_.detect.headAreaRate) {
+    std::stringstream ss;
+    static int einx = 0;
+    einx = (einx + 1) % 10;
+    ss << "emask" <<trackId_ << "/" << einx << ".jpg";
+    cv::imwrite(ss.str().c_str(), tmp);
+        
+        LOG(INFO) << "CUT  TOO HEIGHT ESCAPSE area :" <<  whiteRate;
+          ;
         continue;
-      }
     }
     helmetControlInfo_->checkHelmet(checkInfos[personIndex]->personImage, checkResult); 
    if (checkResult.score < configParam_.helmet.confidence) {
@@ -326,40 +286,9 @@ int Track::detect(const cv::Mat &m,
    result[0].push_back(detectResult); 
    result[1].push_back(personResult); 
   }
+  cv::Mat mo = m;
+  doDrawWork(mo, bgmask, result);
   return 0;
-}
-
-bool Track::moveDetect(const cv::Mat &m,
-    cv::Mat &bgmask) {
-  std::call_once(initFlag_, &Track::initMoveDetect, this);
-  int status = 0;
-  bool f = status_.compare_exchange_strong(status, 1);
-  if (!f)  {
-    LOG(INFO) <<  "bgmode already in processing"; 
-    return false;
-  }
-  bgsub_->apply(m, bgmask); 
-  status_ = 0;
-  cv::erode(bgmask, bgmask, cv::Mat());
-  cv::dilate(bgmask, bgmask, cv::Mat());
-  cv::medianBlur(bgmask, bgmask, 3);
-  double rate = 0.0;
-  int whiteCount = 0;
-  for (int i = 0; i < bgmask.rows; i++) {
-    uchar *ptr = bgmask.ptr(i);
-    const uchar *end = ptr + bgmask.cols;
-    while (ptr < end) {
-      if (*ptr > 125) {
-        whiteCount++;
-      } else {
-        *ptr = 0;
-      }
-      ptr++;
-    }
-  }
-  rate = (double)whiteCount / (bgmask.rows * bgmask.cols);
-  //LOG(INFO) << "caseId:" <<trackId_ <<"rate is:" <<rate;;
-  return rate > configParam_.detect.moveDetectRate;
 }
 
 } //namespace ktrack

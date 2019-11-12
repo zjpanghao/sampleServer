@@ -14,10 +14,7 @@
 #include "faceEntity.h"
 #include <list>
 
-class DBPool;
 namespace kface {
-struct News;
-class FaceRepo;
 class FaceService {
  public:
   static FaceService& getFaceService();
@@ -25,19 +22,15 @@ class FaceService {
   int detect(int caseId,
       const std::string &image, 
       std::vector<ktrack::ObjectDetectResult> result[]);
+
   void init(const kunyan::Config &config); 
   //std::shared_ptr<News> getLatestNews();
   std::string getLatestImage(int caseId);
-  int trackStart();
-  int trackStop();
 
  private:
-  //std::shared_ptr<FaceRepo> newsRepo_;
   std::shared_ptr<ktrack::TrackControl> trackControl_;
-  //std::map<int, std::shared_ptr<ktrack::Track>> tracks_;
-  std::mutex lock_;
-  volatile bool start_{false};
 };
-}
+
+} // namespace kface
 
 #endif
