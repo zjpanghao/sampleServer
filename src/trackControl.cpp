@@ -107,21 +107,17 @@ void TrackControl::startTrack(int number) {
     return;
   }
   ConfigParam configParam = configParam_;
-  std::shared_ptr<Track> track= std::make_shared<Track>(caseId, 
-    detectBuffers_, 
-                                                        faceBuffers_, 
-                                                        helmetClients_[caseId % CLIENTS_NUM],
-                                                        configParam);
   std::stringstream ss;
   ss <<"detect" << caseId;
   std::string detect = ss.str();
   std::string value;
-  setConfig("detect", "hatRate",
+  setConfig(detect, "hatRate",
     configParam.detect.hatRate,
     configParam_.detect.hatRate);
   setConfig(detect, "helmetConfidence",
       configParam.helmet.confidence,
       configParam_.helmet.confidence);
+  LOG(INFO) << detect << " helmetConfidence:" << configParam.helmet.confidence;
   setConfig(detect, "heightWidthThresh",
       configParam.detect.heightWidthThresh,
       configParam_.detect.heightWidthThresh);
@@ -137,6 +133,11 @@ void TrackControl::startTrack(int number) {
   setConfig(detect, "headAreaRate",
     configParam.detect.headAreaRate,
     configParam_.detect.headAreaRate);
+  std::shared_ptr<Track> track= std::make_shared<Track>(caseId, 
+    detectBuffers_, 
+                                                        faceBuffers_, 
+                                                        helmetClients_[caseId % CLIENTS_NUM],
+                                                        configParam);
   if (0 != track->init()) {
     LOG(ERROR) << "track start error!";
     return;
