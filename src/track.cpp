@@ -41,75 +41,51 @@ cv::Mat Track::getLatestImage() {
   return videoInfo_->getImage();
 }
 
-bool Track::getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int maxHeight, cv::Rect &rect) {
-  auto it = faces.begin();
-  while (it != faces.end()) {
-    if (it->confidence() > configParam_.face.confidence) {
-      //auto &location = it->second;
-      rect = it->rect();
-      rect.x -= rect.width / 2;
-      rect.y -= rect.height;
-      if (rect.x < 0) {
-        rect.x = 0;
-      }
-      if (rect.y < 0) {
-        rect.y = 0;
-      }
-      rect.height = rect.height *2;
-      if (rect.y + rect.height >= maxHeight) {
-        rect.height = maxHeight - rect.y;
-      }
-
-      rect.width  = rect.width * 2;
-      if (rect.width + rect.x >= maxWidth) {
-        rect.width = maxWidth - rect.x;
-      }
-      return true;
-    } 
-    it++;
+void Track::getFaceBox(const cv::Rect &originRect, int maxWidth, cv::Rect &faceRect) {
+  auto rect = originRect;
+  if (rect.y >= rect.height) {
+    rect.y -= rect.height;
+    rect.height *= 2;
+  } else {
+    rect.height += rect.y;
+    rect.y = 0;
   }
-  return false;
+  if (rect.x >= rect.width / 2) {
+    rect.x -= rect.width / 2;
+  } else {
+    rect.x = 0;
+  }
+  if (rect.x + rect.width * 2 <= maxWidth) {
+    rect.width *= 2;
+  } else {
+    rect.width = maxWidth - rect.x;
+  }
+  faceRect = rect;
 }
 
-double Track::getWhiteRate(const cv::Mat &m) {
-  int count = 0;
-  for (int i = 0; i < m.rows; i++) {
-    const uchar *p = m.ptr(i);
-    const uchar *q = p + m.cols;
-    for (;p < q; p++) {
-      if (*p > 0) {
-        count++;
-      }
-    }
-  }
-  return (double)count / (m.rows *m.cols);
-
-}
-
-void Track::doDrawWork(cv::Mat &mo, const cv::Mat &bgmask, const std::vector<ObjectDetectResult> results[]) {
-  for (int i = 0; i < results[0].size(); i++) {
-    cv::Rect rect(results[1][i].x, results[1][i].y,
-        results[1][i].width, results[1][i].height);
-    cv::Mat cutMask(bgmask, rect);
+void Track::doDrawWork(cv::Mat &mo, const cv::Mat &bgmask, const std::vector<ktrack::DetectInfo> &results) {
+  // landmark
+  for (auto &result : results) {
+    cv::Mat cutMask(bgmask, getRect(result.helmet));
     std::stringstream ss;
     static int inx = 0;
     inx = (inx + 1) % 100;
     ss << "landmark" <<trackId_ << "/" 
       << "record_" << inx << ".jpg";
-    cv::Mat cut(mo, rect);
+    cv::Mat cut(mo, getRect(result.helmet));
     cv::imwrite(ss.str().c_str(), cut);
     ss.str("");
     ss.clear();
     ss << "mask" <<trackId_ << "/" << inx << ".jpg";
     cv::imwrite(ss.str().c_str(), cutMask);
   }
-  for (int i = 0; i < results[0].size(); i++) {
+  for (auto &result : results) {
     static cv::Scalar BLUE = cv::Scalar(255, 0, 0);
     static cv::Scalar GREEN = cv::Scalar(0, 255, 0);
     static cv::Scalar RED = cv::Scalar(0, 0, 255);
     cv::Scalar scalar;
-    std::string category = results[0][i].category;
-    LOG(INFO) << "person" << i << "score:" << results[0][i].score;
+    std::string category = result.helmet.category;
+    LOG(INFO) << "person" << "score:" << result.helmet.score;
     if (category == "landmark") {
       scalar = GREEN;  
     } else if (category == "with") {
@@ -118,15 +94,11 @@ void Track::doDrawWork(cv::Mat &mo, const cv::Mat &bgmask, const std::vector<Obj
       scalar = RED;
     }
     std::stringstream scoreStr;
-    scoreStr << results[0][i].score;
-    cv::putText(mo, scoreStr.str(), cv::Point(results[1][i].x + 30, results[1][i].y),
+    scoreStr << result.helmet.score;
+    cv::putText(mo, scoreStr.str(), cv::Point(result.person.x + 30, result.person.y),
         cv::FONT_HERSHEY_PLAIN, 5, scalar,3);
-    cv::Rect rect(results[1][i].x, results[1][i].y,
-        results[1][i].width, results[1][i].height);
-    cv::Rect rect2(results[0][i].x, results[0][i].y,
-        results[0][i].width, results[0][i].height);
-    cv::rectangle(mo, rect, scalar, 2, 1);
-    cv::rectangle(mo, rect2, cv::Scalar(255,255,255), 2, 1);
+    cv::rectangle(mo, getRect(result.helmet), scalar, 2, 1);
+    cv::rectangle(mo, getRect(result.person), cv::Scalar(255,255,255), 2, 1);
   }
   static int inx = 0;
   inx = (inx + 1) % 100;
@@ -136,18 +108,97 @@ void Track::doDrawWork(cv::Mat &mo, const cv::Mat &bgmask, const std::vector<Obj
   videoInfo_->updateImage(mo);
 }
 
-void Track::detectPersons(
+void Track::detectObjects(
     const cv::Mat &m,
     std::vector<ObjectDetectResult> &persons) {
   ApiWrapper<DetectServiceCvImpl> api(detectBuffers_);
   auto detectService = api.getApi();
   detectService->getDetectResult(m, persons);
-  TrackFilter::instance()
-    .filterPersonScore(configParam_.detect.confidence, persons);
 }
 
+int Track::detectPersonInfo(
+    const cv::Mat &m,
+    std::vector<DetectInfo> &results) {
+  std::vector<ObjectDetectResult> objects;
+  detectObjects(m, objects);
+  TrackFilter::instance()
+    .filterPersonScore(configParam_.detect.confidence, objects);
+  TrackFilter::instance().filterBorder(BORDER_WIDTH, m.cols, m.rows, objects);
+  TrackFilter::instance().filterPersonAspect(configParam_.detect.heightWidthThresh, objects);
+  for (auto &person : objects) {
+    int persony = person.y - configParam_.detect.upLength * person.height;
+    if (persony < 0) {
+      persony = 0;
+    }
+    int diff = person.y - persony;
+    DetectInfo detectInfo;
+    detectInfo.person.x = person.x;
+    detectInfo.person.y = person.y;
+    detectInfo.person.width = person.width;
+    detectInfo.person.height = person.height / 2;
+    detectInfo.helmet.x = person.x;
+    detectInfo.helmet.y = persony;
+    detectInfo.helmet.width = person.width;
+    detectInfo.helmet.height = 
+person.height * configParam_.detect.hatRate + diff;
+    LOG(INFO) << "DIFF :" << diff;
+    results.push_back(detectInfo);
+  }
+  return 0;
+}
+
+void Track::fineHelmetBoxByFace(
+    const cv::Mat &m,
+    std::vector<DetectInfo> &results) {
+  for (auto & result : results) {
+    if (!result.face.valid) {
+      continue;
+    }
+    cv::Rect fineBox;
+    getFaceBox(result.face.getRect(), m.cols, fineBox);
+    result.helmet.setRect(fineBox);
+  }
+}
+
+int Track::detectFaceInfo(
+    const cv::Mat &m,
+    std::vector<DetectInfo> &results) {
+  if (results.empty()) {
+    return 0;
+  }
+  ApiWrapper<FaceApi> faceApiWrapper(faceBuffers_);
+  auto faceApi = faceApiWrapper.getApi();
+  for (auto & result : results) {
+    cv::Mat personImage(m, getRect(result.person));
+    std::vector<FaceLocation> faceList;
+    faceApi->getLocations(personImage, faceList);
+    TrackFilter::instance().filterFaceScore(configParam_.face.confidence, faceList);
+    if (faceList.size() > 0) {
+      FaceLocation faceLocation = faceList[0];
+
+      result.face.valid = true;
+      setRect(faceLocation.rect(), result.face); 
+      result.face.x += result.person.x;
+      result.face.y += result.person.y;
+    }
+  }
+  return 0;
+}
+
+int Track::preDetect(const cv::Mat &m,
+    std::vector<DetectInfo> &results) {
+  detectPersonInfo(m, results);
+  detectFaceInfo(m, results);
+  if (results.empty()) {
+    return 0;
+  }
+  fineHelmetBoxByFace(m, results);
+  return 0;
+}
+
+
 int Track::detect(const cv::Mat &m,
-      std::vector<ObjectDetectResult> result[]) {
+    std::vector<DetectInfo> &results) {
   cv::Mat bgmask;
   double rate;
   if (!moveDetect_->moveDetect(m, 
@@ -157,96 +208,29 @@ int Track::detect(const cv::Mat &m,
     videoInfo_->updateImage(bgmask);
     return 0;
   }
-  std::vector<ObjectDetectResult> objects;
-  detectPersons(m, objects);
-  TrackFilter::instance().filterBorder(BORDER_WIDTH, m.cols, m.rows, objects);
-  TrackFilter::instance().filterPersonAspect(configParam_.detect.heightWidthThresh, objects);
-  int count = objects.size();
-  if (count <= 0) {
+  preDetect(m, results);
+  TrackFilter::instance().filterBackground(configParam_.detect.headAreaRate, bgmask, results);
+  if (results.size() == 0) {
+    videoInfo_->updateImage(bgmask);
     return 0;
   }
-  LOG(INFO) << trackId_ << " origin find " << objects.size() << "person";
- 
-  std::vector<std::shared_ptr<HelmetCheckInfo>> checkInfos;
-  for (auto &person : objects) {
-    int persony = person.y - configParam_.detect.upLength * person.height;
-    if (persony < 0) {
-      persony = 0;
-    }
-    int diff = person.y - persony;
-    LOG(INFO) << "DIFF :" << diff;
-    cv::Rect box(person.x, persony, person.width, person.height * configParam_.detect.hatRate + diff);
-    cv::Rect faceDetectBox(box);
-    cv::Mat faceImage(m, faceDetectBox);
-    std::vector<FaceLocation> faceList;
-    {
-      ApiWrapper<FaceApi> faceApiWrapper(faceBuffers_);
-      auto faceApi = faceApiWrapper.getApi();
-      faceApi->getLocations(faceImage, faceList);
-    }
-    auto boxDetect = box;
-    cv::Rect helmetBox;
-    bool valid = getHelmetBox(faceList, faceImage.cols, faceImage.rows, helmetBox);
-    if (valid) {
-      box = helmetBox;
-      faceImage = cv::Mat(faceImage, helmetBox);
-      box.x  += boxDetect.x;
-      box.y  += boxDetect.y;
-    }
-    std::shared_ptr<HelmetCheckInfo> checkInfo 
-      = std::make_shared<HelmetCheckInfo>();
-    checkInfo->rect = box;
-    checkInfo->personBox = cv::Rect(person.x, person.y, person.width, person.height / 2); 
-    checkInfo->personImage = faceImage;
-    checkInfos.push_back(checkInfo);
-  }
-  LOG(INFO) << checkInfos.size();
-  HelmetCheckResult checkResult;
-  ObjectDetectResult detectResult;
-  ObjectDetectResult personResult;
 
-  for (int personIndex = 0; personIndex < checkInfos.size(); personIndex++) {
-      cv::Mat tmp(bgmask, checkInfos[personIndex]->rect);
-      double whiteRate;
-      if ((whiteRate = getWhiteRate(tmp)) < \
-          configParam_.detect.headAreaRate) {
-    std::stringstream ss;
-    static int einx = 0;
-    einx = (einx + 1) % 10;
-    ss << "emask" <<trackId_ << "/" << einx << ".jpg";
-    cv::imwrite(ss.str().c_str(), tmp);
-        
-        LOG(INFO) << "CUT  TOO HEIGHT ESCAPSE area :" <<  whiteRate;
-          ;
-        continue;
+  for (auto &detectInfo : results) {
+    cv::Mat personImage(m, getRect(detectInfo.helmet));
+    HelmetCheckResult checkResult;
+    checkResult.score = 0;
+    helmetControlInfo_->checkHelmet(personImage, checkResult); 
+    if (checkResult.score < configParam_.helmet.confidence) {
+      LOG(INFO) << "score too little:" << checkResult.score;
+      continue;
     }
-    helmetControlInfo_->checkHelmet(checkInfos[personIndex]->personImage, checkResult); 
-   if (checkResult.score < configParam_.helmet.confidence) {
-     LOG(INFO) << "score too little:" << checkResult.score;
-     continue;
-   }
-   auto info = checkInfos[personIndex];
-   detectResult.score = 100 *checkResult.score;
-   personResult.x = info->personBox.x;
-   personResult.y = info->personBox.y;
-   personResult.width = info->personBox.width;
-   personResult.height = info->personBox.height;
-   personResult.score = objects[personIndex].score * 100;
-   detectResult.x = 
-     checkInfos[personIndex]->rect.x;
-   detectResult.y = checkInfos[personIndex]->rect.y;
-   detectResult.width = checkInfos[personIndex]->rect.width;
-   detectResult.height = checkInfos[personIndex]->rect.height;
-   detectResult.category = checkResult.name;
-   std::swap(detectResult.x, personResult.x);
-   std::swap(detectResult.y, personResult.y);
-   std::swap(detectResult.height, personResult.height);
-   std::swap(detectResult.width, personResult.width);
-   result[0].push_back(detectResult); 
-   result[1].push_back(personResult); 
+
+    detectInfo.helmet.score = 100 *checkResult.score;
+    detectInfo.helmet.category = checkResult.name;
   }
+  TrackFilter::instance().filterHelmetScore(configParam_.helmet.confidence * 100, results);
   cv::Mat mo = m;
-  doDrawWork(mo, bgmask, result);
+  doDrawWork(mo, bgmask, results);
   return 0;
 }
 

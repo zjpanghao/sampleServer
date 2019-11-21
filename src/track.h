@@ -34,18 +34,42 @@ class Track  {
    Track & operator = (const Track &) = delete;
    int init();
    cv::Mat getLatestImage();
-   void detectPersons(const cv::Mat &m,
+   void detectObjects(const cv::Mat &m,
        std::vector<ObjectDetectResult> &persons);
 
+   int detectPersonInfo(const cv::Mat &m,
+      std::vector<DetectInfo> &results);
+   int detectFaceInfo(const cv::Mat &m,
+      std::vector<DetectInfo> &results);
+   int preDetect(const cv::Mat &m,
+      std::vector<DetectInfo> &results);
    int detect(const cv::Mat &m,
-      std::vector<ObjectDetectResult> result[]);
+      std::vector<DetectInfo> &results);
    double getWhiteRate(const cv::Mat &m);
    void doDrawWork(cv::Mat &mo, 
        const cv::Mat &bgmask,
-       const std::vector<ObjectDetectResult> results[]);
+       const std::vector<DetectInfo> &results);
 
  private:
-   bool getHelmetBox(std::vector<FaceLocation> &faces, int maxWidth, int maxHeight, cv::Rect &rect);
+   void setRect(const cv::Rect &rect, ObjectDetectResult &result) {
+    result.x = rect.x;
+    result.y = rect.y;
+    result.width = rect.width;
+    result.height = rect.height;
+   }
+
+  cv::Rect  getRect(const ObjectDetectResult &result) {
+    return cv::Rect(result.x, 
+                    result.y,
+                    result.width,
+                    result.height);
+  }
+  void getFaceBox(const cv::Rect &originRect, int maxWidth, cv::Rect &faceRect);
+
+   void fineHelmetBoxByFace(
+       const cv::Mat &m,
+       std::vector<DetectInfo> &results);
+
    int index_{0};
    std::shared_ptr<VideoInfo> videoInfo_{nullptr};//{std::make_shared<VideoInfo>()};
    std::shared_ptr<HelmetClient> client_;

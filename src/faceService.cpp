@@ -19,7 +19,7 @@ FaceService::FaceService() {
 
 int FaceService::detect(int caseId, 
     const std::string &image, 
-    std::vector<ktrack::ObjectDetectResult> result[]) {
+    std::vector<ktrack::DetectInfo> &results) {
   auto track = trackControl_->getTrackById(caseId);
   if (track == nullptr) {
     return -1;
@@ -27,7 +27,10 @@ int FaceService::detect(int caseId,
   std::vector<unsigned char> data;
   Base64::getBase64().decode(image, data);
   cv::Mat mo = cv::imdecode(data, cv::ImreadModes::IMREAD_COLOR);
-  return track->detect(mo, result);
+  if (mo.empty()) {
+    return -2;
+  }
+  return track->detect(mo, results);
 }
 
 void FaceService::init(const kunyan::Config &config) {

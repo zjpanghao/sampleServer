@@ -98,7 +98,7 @@ void FaceControl::helmetDetectCb(struct evhttp_request *req, void *arg) {
     return;
   }
   std::string data;
-  int caseId;
+  int caseId = -1;
   JsonUtil::getJsonStringValue(root, "image", data);
   JsonUtil::getJsonInt(root, "caseId", caseId);
   if (data.empty()) {
@@ -108,24 +108,22 @@ void FaceControl::helmetDetectCb(struct evhttp_request *req, void *arg) {
   }
   FaceService &service = FaceService::getFaceService(); 
   rc =0;
-  std::vector<ktrack::ObjectDetectResult> detectResult[2];
-  rc = service.detect(caseId, data, detectResult);
+  std::vector<ktrack::DetectInfo> detectResults;
+  rc = service.detect(caseId, data, detectResults);
   if (rc != 0) {
     sendResponse(rc, "detect error", req, response);
     return;
   }
   helmetResult["error_code"] = 0;
-  for (int i = 0; i < detectResult[0].size(); i++) {
+  for (auto detectResult : detectResults ) {
     Json::Value detect;
-    auto &object = detectResult[1][i];
-    auto &helmetObject = detectResult[0][i];
+    auto &helmetObject = detectResult.helmet;
     Json::Value item;
     Json::Value helmetItem;
-    item["headLeft"] = object.x;
-    item["headTop"] = object.y;
-    item["headWidth"] = object.width;
-    item["headHeight"] = object.height;
-    item["score"] = object.score;
+    item["headLeft"] = detectResult.person.x;
+    item["headTop"] = detectResult.person.y;
+    item["headWidth"] = detectResult.person.width;
+    item["headHeight"] = detectResult.person.height;
     detect["head"] = item;
     helmetItem["category"] = helmetObject.category;
     helmetItem["helmetLeft"] = helmetObject.x;

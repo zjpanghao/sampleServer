@@ -21,7 +21,7 @@ class FaceService {
   FaceService();
   int detect(int caseId,
       const std::string &image, 
-      std::vector<ktrack::ObjectDetectResult> result[]);
+      std::vector<ktrack::DetectInfo> &results);
 
   void init(const kunyan::Config &config); 
   //std::shared_ptr<News> getLatestNews();

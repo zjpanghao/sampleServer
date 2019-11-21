@@ -9,10 +9,12 @@
 #include "videoInfo.h"
 #include <glog/logging.h>
 #include "helmetEntity.h"
+#include "faceEntity.h"
 struct HelmetCheckInfo {
   cv::Rect rect;
   cv::Rect personBox;
   cv::Mat personImage;
+  ktrack::DetectInfo detectInfo;
   HelmetCheckResult result;
 };
 
