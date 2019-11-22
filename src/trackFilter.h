@@ -15,6 +15,8 @@ class TrackFilter {
                      std::vector<ObjectDetectResult> &results);
    void filterFaceScore(double score,
                         std::vector<FaceLocation> &results);
+   void filterFaceAspect(double rate,
+                        std::vector<FaceLocation> &results);
    void filterBorder(
                 int border, 
                 int width, 
@@ -22,6 +24,7 @@ class TrackFilter {
                 std::vector<ObjectDetectResult> &results);
    void filterPersonAspect(double rate, std::vector<ObjectDetectResult> &results);
    void filterBackground(double rate, const cv::Mat &mask,  std::vector<DetectInfo> &results);
+   void filterCenterBackground(double rate, const cv::Mat &mask,  std::vector<DetectInfo> &results);
    void filterHelmetScore(double score, std::vector<DetectInfo> &results);
   double getWhiteRate(const cv::Mat &m);
 };

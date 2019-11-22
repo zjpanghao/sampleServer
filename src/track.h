@@ -42,6 +42,7 @@ class Track  {
    int detectFaceInfo(const cv::Mat &m,
       std::vector<DetectInfo> &results);
    int preDetect(const cv::Mat &m,
+      const cv::Mat &mask,
       std::vector<DetectInfo> &results);
    int detect(const cv::Mat &m,
       std::vector<DetectInfo> &results);
@@ -66,9 +67,17 @@ class Track  {
   }
   void getFaceBox(const cv::Rect &originRect, int maxWidth, cv::Rect &faceRect);
 
-   void fineHelmetBoxByFace(
-       const cv::Mat &m,
-       std::vector<DetectInfo> &results);
+void fineHelmetBoxHorizontalByBG(
+    int horizontalThresh,
+    const cv::Mat &bgmask,
+    std::vector<DetectInfo> &results);
+  void fineHelmetBoxByBackground(
+      int widthThresh,
+      const cv::Mat &bgmask,
+      std::vector<DetectInfo> &results); 
+  void fineHelmetBoxByFace(
+      const cv::Mat &m,
+      std::vector<DetectInfo> &results);
 
    int index_{0};
    std::shared_ptr<VideoInfo> videoInfo_{nullptr};//{std::make_shared<VideoInfo>()};

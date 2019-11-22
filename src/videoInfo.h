@@ -7,7 +7,7 @@
 class VideoInfo {
   public:
     VideoInfo() = default;
-    void updateImage(cv::Mat &m) {
+    void updateImage(const cv::Mat &m) {
       std::lock_guard<std::mutex> guard(lock_);
       image_ = m;
     }

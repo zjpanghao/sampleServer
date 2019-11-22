@@ -18,7 +18,7 @@ struct ObjectDetectResult {
     height = rect.height;
   }
 
-  cv::Rect  getRect() {
+  cv::Rect  getRect() const {
     return cv::Rect(x, 
                     y,
                     width,
