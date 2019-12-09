@@ -13,7 +13,7 @@
 extern int gpu_index;
 namespace ktrack {
 
-int DetectService::init(const kunyan::Config &config) {
+int DetectServiceDk::init(const kunyan::Config &config) {
   LOG(INFO) << "init detect service";
 #ifdef GPU
   gpu_index = 0;
@@ -62,7 +62,7 @@ static image maToImage(const cv::Mat &src) {
     return im;
 }
 
-int DetectService::getDetectResult(const cv::Mat &m, 
+int DetectServiceDk::getDetectResult(const cv::Mat &m, 
     std::vector<ObjectDetectResult> &result) {
   int rc = 0;
 #if 1

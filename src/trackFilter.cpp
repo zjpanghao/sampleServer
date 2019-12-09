@@ -42,35 +42,41 @@ void TrackFilter::filterFaceScore(
   }
 }
 
-void TrackFilter::filterBorder(
+int TrackFilter::filterBorder(
     int border, 
     int width, 
     int height,
     std::vector<ObjectDetectResult> &results) {
   auto it = results.begin();
+  int cnt = 0;
   while (it != results.end()) {
     auto &object = *it;
     if (object.x < border
-        || object.x > width - border
-        || object.y > height - border 
+        || object.x + object.width > width - border
+        || object.y + object.height > height - border 
         || object.y < border) {
       it = results.erase(it);
+      cnt++;
     } else {
       it++;
     }
   }
+  return cnt;
 }
 
-void TrackFilter::filterPersonAspect(double rate, std::vector<ObjectDetectResult> &results) {
+int TrackFilter::filterPersonAspect(double rate, std::vector<ObjectDetectResult> &results) {
   auto it = results.begin();
+  int cnt = 0;
   while (it != results.end()) {
     if (it->height < it->width * rate) {
-      LOG(INFO) << "person widthRate too high:" << (double)it->width/it->height;
+      LOG(INFO) << "person aspect too high:" << (double)it->width/it->height;
       it =results.erase(it);
+      cnt++;
     } else {
       it++;
     }
   }
+  return cnt;
 }
 
 double TrackFilter::getWhiteRate(const cv::Mat &m) {
@@ -87,21 +93,25 @@ double TrackFilter::getWhiteRate(const cv::Mat &m) {
   return (double)count / (m.rows *m.cols);
 }
 
-void TrackFilter::filterBackground(double rate, const cv::Mat &mask,std::vector<DetectInfo> &results) {
+int TrackFilter::filterBackground(double rate, const cv::Mat &mask,std::vector<DetectInfo> &results) {
   auto it = results.begin();
+  int cnt = 0;
   while (it != results.end()) {
     cv::Mat helmetBg(mask,it->helmet.getRect());
     double whiteRate;
     if ((whiteRate =
           getWhiteRate(helmetBg)) < rate) {
       it = results.erase(it);
+      cnt++;
     } else {
       it++;
     }
   }
+  return cnt;
 }
 
-void TrackFilter::filterCenterBackground(double rate, const cv::Mat &mask,std::vector<DetectInfo> &results) {
+int TrackFilter::filterCenterBackground(double rate, const cv::Mat &mask,std::vector<DetectInfo> &results) {
+  int cnt = 0;
   auto it = results.begin();
   while (it != results.end()) {
     cv::Rect left(it->helmet.getRect());
@@ -117,13 +127,15 @@ void TrackFilter::filterCenterBackground(double rate, const cv::Mat &mask,std::v
     if (whiteRate[0] > whiteRate[1]) {
       std::swap(whiteRate[0], whiteRate[1]);
     }
-    LOG(INFO) <<"whiteRate:" << whiteRate[0] << "," << whiteRate[1]; 
     if (whiteRate[0] *rate < whiteRate[1]){
       it = results.erase(it);
+      cnt++;
+      LOG(INFO) <<"whiteRate:" << whiteRate[0] << "," << whiteRate[1]; 
     } else {
       it++;
     }
   }
+  return cnt;
 }
 
 void TrackFilter::filterHelmetScore(double score,std::vector<DetectInfo> &results) {

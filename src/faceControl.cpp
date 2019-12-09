@@ -64,7 +64,8 @@ void FaceControl::trackImageCb(struct evhttp_request *req, void *arg) {
     return;
   }
   FaceService &service = FaceService::getFaceService(); 
-  std::string image = service.getLatestImage(caseId);
+  std::string image;
+  service.getLatestImage(caseId, image);
   evbuffer_add_printf(response, "%s", image.c_str());
   evhttp_send_reply(req, 200, "OK", response);
 }

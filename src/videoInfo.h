@@ -3,25 +3,21 @@
 #include <opencv2/opencv.hpp>
 #include <memory>
 #include <mutex>
+#include "pbase64/base64.h"
 
 class VideoInfo {
   public:
     VideoInfo() = default;
-    void updateImage(const cv::Mat &m) {
-      std::lock_guard<std::mutex> guard(lock_);
-      image_ = m;
-    }
+    void updateImage(const cv::Mat &m); 
 
-    cv::Mat getImage() {
-      std::lock_guard<std::mutex> guard(lock_);
-      return image_;
-    }
+    void getImage(std::string &image);
 
     VideoInfo(const VideoInfo &) = delete;
     VideoInfo &operator=(const VideoInfo &) = delete;
 
   private:
     cv::Mat image_;
+    std::string imageBase64_;
     std::mutex lock_;
 };
 

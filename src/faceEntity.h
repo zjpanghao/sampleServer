@@ -10,6 +10,7 @@ struct ObjectDetectResult {
   int y;
   int width;
   int height;
+  double costTime;
 
   void setRect(const cv::Rect &rect) {
     x = rect.x;

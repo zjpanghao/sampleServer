@@ -25,7 +25,7 @@ class FaceService {
 
   void init(const kunyan::Config &config); 
   //std::shared_ptr<News> getLatestNews();
-  std::string getLatestImage(int caseId);
+  void getLatestImage(int caseId, std::string &image);
 
  private:
   std::shared_ptr<ktrack::TrackControl> trackControl_;

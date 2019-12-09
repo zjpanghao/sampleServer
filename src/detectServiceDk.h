@@ -13,12 +13,12 @@
 #include <opencv2/core.hpp>
 struct network;
 namespace ktrack {
-class DetectService {
+class DetectServiceDk {
  public:
-  static DetectService& getDetectService();
+  static DetectServiceDk& getDetectServiceDk();
   virtual int init(const kunyan::Config &config);
   virtual int getDetectResult(const cv::Mat &m, std::vector<ObjectDetectResult> &result);
-  DetectService();
+  DetectServiceDk();
  private:
   network *net_;
   //list *options_;

@@ -1,6 +1,18 @@
 #include "trackDraw.h"
 #include <glog/logging.h>
 
+void TrackDraw::drawDouble(cv::Mat &m,
+    double score, int x, int y,
+    cv::Scalar &scalar) {
+    std::stringstream costTime;
+    costTime.precision(2);
+    costTime.setf(std::ios::fixed);
+    costTime << score;
+    cv::putText(m, costTime.str(), cv::Point(x, y),
+        cv::FONT_HERSHEY_PLAIN, 5, scalar,3);
+
+}
+
 void TrackDraw::doDrawWork(int trackId, const cv::Mat &bgmask, const std::vector<ktrack::DetectInfo> &results, cv::Mat &mo) {
   // landmark
   for (auto &result : results) {
@@ -34,8 +46,24 @@ void TrackDraw::doDrawWork(int trackId, const cv::Mat &bgmask, const std::vector
     }
     std::stringstream scoreStr;
     scoreStr << result.helmet.score;
-    cv::putText(mo, scoreStr.str(), cv::Point(result.person.x + 30, result.person.y),
-        cv::FONT_HERSHEY_PLAIN, 5, scalar,3);
+    drawDouble(mo,result.helmet.score,
+      result.person.x + 30, 
+      result.person.y,
+      scalar);
+    drawDouble(mo,result.person.costTime,
+      result.person.x + 30, 
+      result.person.y + 50,
+      scalar);
+
+    drawDouble(mo,result.face.costTime,
+      result.person.x + 30, 
+      result.person.y + 100,
+      scalar);
+    drawDouble(mo,result.helmet.costTime,
+      result.person.x + 30, 
+      result.person.y + 150,
+      scalar);
+
     cv::rectangle(mo,result.helmet.getRect(), scalar, 2, 1);
     cv::rectangle(mo, result.person.getRect(), cv::Scalar(255,255,255), 2, 1);
     if (result.face.valid) {

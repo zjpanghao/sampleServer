@@ -33,7 +33,7 @@ class Track  {
    Track(const Track &) = delete;
    Track & operator = (const Track &) = delete;
    int init();
-   cv::Mat getLatestImage();
+   void  getLatestImage(std::string &image);
    void detectObjects(const cv::Mat &m,
        std::vector<ObjectDetectResult> &persons);
 

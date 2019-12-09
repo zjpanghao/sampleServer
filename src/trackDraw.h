@@ -9,6 +9,13 @@ class TrackDraw {
     static TrackDraw draw;
     return draw;
   }
+
+  void drawDouble(cv::Mat &m,
+    double score, 
+    int x, 
+    int y,
+    cv::Scalar &scalar);
+
   void doDrawWork(int trackId, const cv::Mat &bgmask, const std::vector<ktrack::DetectInfo> &results, cv::Mat &mo);
 
 };

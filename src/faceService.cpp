@@ -50,22 +50,12 @@ void FaceService::init(const kunyan::Config &config) {
   }
 }
 
-std::string FaceService::getLatestImage(int caseId) {
+void FaceService::getLatestImage(int caseId, std::string &image) {
   auto track = trackControl_->getTrackById(caseId);
   if (track == nullptr) {
-    return "";
+    return;
   }
-  cv::Mat m =  track->getLatestImage();
-  if (m.cols == 0) {
-    return "";
-  }
-  std::vector<unsigned char> data;
-  cv::imencode(".jpg", m, data);
-  std::string value;
-  Base64::getBase64().encode(data, value);
-  std::string image = "data:image/jpeg;base64,";
-  image += value;
-  return image;
+  track->getLatestImage(image);
 }
 
 }

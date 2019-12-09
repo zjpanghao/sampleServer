@@ -1,4 +1,5 @@
 #include "track.h"
+#include <chrono>
 #include <opencv2/opencv.hpp>
 #include "pbase64/base64.h"
 #include <json/json.h>
@@ -19,7 +20,7 @@ using  apache::thrift::transport::TSocket;
 using  apache::thrift::transport::TTransportException;
 using  apache::thrift::transport::TBufferedTransport;
 
-#define BORDER_WIDTH 150
+#define BORDER_WIDTH 100
 namespace ktrack {
 Track::Track(int trackId, ApiBuffer<DetectServiceCvImpl> &apiBuffers,
     ApiBuffer<FaceApi> &faceBuffers, 
@@ -38,8 +39,8 @@ int Track::init() {
   return 0;
 }
 
-cv::Mat Track::getLatestImage() {
-  return videoInfo_->getImage();
+void Track::getLatestImage(std::string &image) {
+  videoInfo_->getImage(image);
 }
 
 void Track::getFaceBox(const cv::Rect &originRect, int maxWidth, cv::Rect &faceRect) {
@@ -69,7 +70,13 @@ void Track::detectObjects(
     std::vector<ObjectDetectResult> &persons) {
   ApiWrapper<DetectServiceCvImpl> api(detectBuffers_);
   auto detectService = api.getApi();
+  auto start = std::chrono::steady_clock::now();
   detectService->getDetectResult(m, persons);
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> diff = end - start;
+  for (auto &obj : persons) {
+    obj.costTime = diff.count();
+  }
 }
 
 int Track::detectPersonInfo(
@@ -79,8 +86,14 @@ int Track::detectPersonInfo(
   detectObjects(m, objects);
   TrackFilter::instance()
     .filterPersonScore(configParam_.detect.confidence, objects);
-  TrackFilter::instance().filterBorder(BORDER_WIDTH, m.cols, m.rows, objects);
-  TrackFilter::instance().filterPersonAspect(configParam_.detect.heightWidthThresh, objects);
+  int cnt = TrackFilter::instance().filterBorder(BORDER_WIDTH, m.cols, m.rows, objects);
+  if (cnt > 0) {
+    LOG(INFO) << "border filter cnt:" << cnt;
+  }
+  cnt = TrackFilter::instance().filterPersonAspect(configParam_.detect.heightWidthThresh, objects);
+  if (cnt > 0) {
+    LOG(INFO) << "aspect filter cnt:" << cnt;
+  }
   for (auto &person : objects) {
     int persony = person.y - configParam_.detect.upLength * person.height;
     if (persony < 0) {
@@ -98,6 +111,8 @@ int Track::detectPersonInfo(
     detectInfo.helmet.height = 
 person.height * configParam_.detect.hatRate + diff;
     LOG(INFO) << "DIFF :" << diff;
+    detectInfo.person.costTime = 
+      person.costTime;
     results.push_back(detectInfo);
   }
   return 0;
@@ -214,7 +229,11 @@ int Track::detectFaceInfo(
   for (auto & result : results) {
     cv::Mat personImage(m, getRect(result.person));
     std::vector<FaceLocation> faceList;
+    auto start = std::chrono::steady_clock::now();
     faceApi->getLocations(personImage, faceList);
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    result.face.costTime = diff.count();
     TrackFilter::instance().filterFaceScore(configParam_.face.confidence, faceList);
     TrackFilter::instance().filterFaceAspect(2.2, faceList);
     if (faceList.size() > 0) {
@@ -233,6 +252,7 @@ int Track::preDetect(const cv::Mat &m,
     const cv::Mat &mask,
     std::vector<DetectInfo> &results) {
   detectPersonInfo(m, results);
+
   detectFaceInfo(m, results);
   if (results.empty()) {
     return 0;
@@ -240,8 +260,14 @@ int Track::preDetect(const cv::Mat &m,
   fineHelmetBoxByFace(m, results);
   fineHelmetBoxByBackground(10, mask, results);
   fineHelmetBoxHorizontalByBG(10, mask, results);
-  TrackFilter::instance().filterBackground(configParam_.detect.headAreaRate, mask, results);
-  TrackFilter::instance().filterCenterBackground(2, mask, results);
+  int cnt = TrackFilter::instance().filterBackground(configParam_.detect.headAreaRate, mask, results);
+  if (cnt > 0) {
+    LOG(INFO) << "headArea filter size:" <<     cnt;
+  }
+  cnt = TrackFilter::instance().filterCenterBackground(2, mask, results);
+  if (cnt > 0) {
+  LOG(INFO) << " center bg filter size:" <<     cnt;
+  }
   return 0;
 }
 
@@ -254,12 +280,13 @@ int Track::detect(const cv::Mat &m,
         bgmask,
         rate) || 
       rate < configParam_.detect.moveDetectRate) {
+    //LOG(INFO) << "rate:" << rate;
     videoInfo_->updateImage(bgmask);
     return 0;
   }
   preDetect(m, bgmask, results);
   if (results.size() == 0) {
-    videoInfo_->updateImage(bgmask);
+    videoInfo_->updateImage(m);
     return 0;
   }
 
@@ -267,14 +294,20 @@ int Track::detect(const cv::Mat &m,
     cv::Mat personImage(m, getRect(detectInfo.helmet));
     HelmetCheckResult checkResult;
     checkResult.score = 0;
+    auto start = std::chrono::steady_clock::now();
     helmetControlInfo_->checkHelmet(personImage, checkResult); 
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    detectInfo.helmet.costTime = diff.count();
     detectInfo.helmet.score = 100 *checkResult.score;
     detectInfo.helmet.category = checkResult.name;
   }
   TrackFilter::instance().filterHelmetScore(configParam_.helmet.confidence * 100, results);
+
   if (!results.empty()) {
     cv::Mat mo = m;
-    TrackDraw::instance().doDrawWork(trackId_,
+    TrackDraw::instance().doDrawWork(
+        trackId_,
         bgmask, 
         results,
         mo);
