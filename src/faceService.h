@@ -19,7 +19,7 @@ class FaceService {
  public:
   static FaceService& getFaceService();
   FaceService();
-  void init(const kunyan::Config &config); 
+  int init(const kunyan::Config &config); 
   std::shared_ptr<News> getLatestNews();
 
  private:

@@ -1,20 +1,18 @@
 #ifndef INCLUDE_FACE_CONTROL_H
 #define INCLUDE_FACE_CONTROL_H
 #include <vector>
-#include "httpUtil.h"
-#include "generalControl.h"
-struct evhttp_request;
+#include "evdrv/generalControl.h"
+#include "json/json.h"
 namespace kface {
 class FaceControl : public GeneralControl {
  public:
-   /* can accept image_type FACE_TOKEN & BASE64*/
-   static void faceIdentifyCb(struct evhttp_request *req, void *arg);
    /*support image type  base64*/
-   static void faceDetectCb(struct evhttp_request *req, void *arg);
+   static int faceDetectCb(const Json::Value &root,
+       Json::Value &result);
 
    virtual std::vector<HttpControl> getMapping() override;
+   virtual int init(const kunyan::Config &config);
 };
 
 }
-
 #endif

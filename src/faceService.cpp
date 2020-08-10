@@ -4,9 +4,9 @@
 #include <glog/logging.h>
 #include <regex>
 #include <iterator>
-#include "util.h"
 #include "faceConst.h"
 #include "faceRepo.h"
+#include "resource/resource.h"
 namespace kface {
 FaceService& FaceService::getFaceService() {
   static FaceService faceService;
@@ -16,10 +16,11 @@ FaceService& FaceService::getFaceService() {
 FaceService::FaceService() {
 }
 
-void FaceService::init(const kunyan::Config &config) {
-  std::shared_ptr<DBPool> pool(new DBPool());
-  pool->PoolInit(new DataSource(config));
+int FaceService::init(const kunyan::Config &config) {
+  LOG(INFO)  << "service init";
+  auto pool = Resource::getResource().dbPool();
   newsRepo_.reset(new FaceRepo(pool));
+  return 0;
 }
 
 std::shared_ptr<News> FaceService::getLatestNews() {

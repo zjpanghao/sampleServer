@@ -6,25 +6,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <sys/socket.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <dirent.h>
-
 #include <event2/event.h>
 #include <event2/http.h>
-#include <event2/buffer.h>
 #include <event2/util.h>
-#include <event2/keyvalq_struct.h>
 
-#ifdef EVENT__HAVE_NETINET_IN_H
-#include <netinet/in.h>
-# ifdef _XOPEN_SOURCE_EXTENDED
-#  include <arpa/inet.h>
-# endif
-#endif
-#include "event2/http_compat.h"
 #include "json/json.h"
 #include "event2/http.h"
 
@@ -34,63 +19,58 @@
 #include <glog/logging.h>
 #include <iterator>
 #include <regex>
-#include "util.h"
-#include "httpUtil.h"
+#include "jsonUtil.h"
 #include "faceService.h"
 #include "faceEntity.h"
 
 namespace kface {
-void FaceControl::faceDetectCb(struct evhttp_request *req, void *arg) {
+int FaceControl::faceDetectCb(const Json::Value &root,
+    Json::Value &response) {
   struct timeval tv[2];
   int rc = 0;
-  Json::Value root;
   Json::Value faceResult;
   Json::Value items;
   Json::Reader reader;
  
-  evbuffer *response = evbuffer_new();
-  if (evhttp_request_get_command(req) != EVHTTP_REQ_POST) {
-    rc = -1;
-    sendResponse(rc, "method not support", req, response);
-    return;
-  }
-  
-  std::string body = getBodyStr(req);
-  if (!reader.parse(body, root)) {
-    rc = -3;
-    sendResponse(rc, "parse error", req, response);
-    return;
-  }
   std::string data;
   
-  getJsonString(root, "image", data);
+  JsonUtil::getJsonString(root, "image", data);
  
   if (data.empty()) {
-    rc = -4;
-    sendResponse(rc, "image error", req, response);
-    return;
+   // response["errcode"] = -4;
+   // return 0;
   }
   int faceNum = 1;
-  getJsonString(root, "max_face_num", faceNum);
+  JsonUtil::getJsonInt(root, "max_face_num", faceNum);
   std::string faceType;
-  getJsonString(root, "face_type", faceType);
+  JsonUtil::getJsonString(root, "face_type", faceType);
   std::string decodeData;
   int decodeLen = 0;
+#if 0
   std::vector<unsigned char> cdata;
   cdata.assign(&decodeData[0], &decodeData[0] + decodeLen);
+#endif
   FaceService &service = FaceService::getFaceService(); 
   std::shared_ptr<News> news = service.getLatestNews();
-  std::string result = news->url;
-  if (news != nullptr) {
-    result = news->abstract;
+  if (news) {
+    response["errcode"] = 0;
+    response["uid"] = news->id;
+  } else {
+    response["errcode"] = -2;
   }
-  evbuffer_add_printf(response, "%s", result.c_str());
-  evhttp_send_reply(req, 200, "OK", response);
+  return 0;
+}
+
+int FaceControl::init(
+    const kunyan::Config &config) {
+  FaceService &service = FaceService::getFaceService();
+  return service.init(config);
+  
 }
 
 std::vector<HttpControl> FaceControl::getMapping() {
   std::vector<HttpControl> controlList = {
-    {"/detect", FaceControl::faceDetectCb}
+   {"/detect",FaceControl::faceDetectCb}
   };
   return controlList;
 }
