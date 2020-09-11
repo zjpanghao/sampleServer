@@ -16,14 +16,14 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 #include <signal.h>
-#include "faceService.h"
+#include "projecttestService.h"
 #include "db/dbpool.h"
 #include <memory>
-#include "faceControl.h"
+#include "projecttestControl.h"
 #include "evdrv/evDrvControl.h"
 #include "resource/resource.h"
 
-using kface::FaceService;
+using kprojecttest::ProjecttestService;
 
 static void initGlog(const std::string &name) {
   DIR *dir = opendir("log");
@@ -33,7 +33,7 @@ static void initGlog(const std::string &name) {
     closedir(dir);
   }
   google::InitGoogleLogging(name.c_str());
-  google::SetLogDestination(google::INFO,std::string("log/"+ name + "info").c_str());
+  google::SetLogDestination(google::INFO,std::string("log/"+ name + "projecttest").c_str());
   google::SetLogDestination(google::WARNING,std::string("log/"+ name + "warn").c_str());
   google::SetLogDestination(google::GLOG_ERROR,std::string("log/"+ name + "error").c_str());
   FLAGS_logbufsecs = 0;
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
   initGlog(name);
   kunyan::Config config("config.ini");
   Resource::getResource().init(config);
-  static std::vector<std::shared_ptr<GeneralControl>> controls{std::make_shared<kface::FaceControl>()};
+  static std::vector<std::shared_ptr<GeneralControl>> controls{std::make_shared<kprojecttest::ProjecttestControl>()};
   EvDrvControl::startServer(config, controls);
   while (1) {
     ::sleep(10000);
