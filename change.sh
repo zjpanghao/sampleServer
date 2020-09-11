@@ -19,6 +19,6 @@ else
   rename projecttest $pg *
 fi
 
-sed -i "s/projecttest/$pg/g" `find . -name "$pg*"|grep -v sh`
-sed -i "s/Projecttest/$pg2/g" `find . -name "$pg*"|grep -v sh`
+sed -i "s/projecttest/$pg/g" `find . -name "*.h" -o -name "*.cpp"`
+sed -i "s/Projecttest/$pg2/g" `find . -name "*.h" -o -name "*.cpp"`
 
