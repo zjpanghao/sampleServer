@@ -9,6 +9,7 @@ pg=$1
 echo $pg
 pg2=${pg^}
 echo $pg2
+sed -i "s/projecttest/$pg/g" CMakeLists.txt
 cd src
 if [ $ub -gt 0 ]
 then

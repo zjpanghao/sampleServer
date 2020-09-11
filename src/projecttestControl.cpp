@@ -70,7 +70,7 @@ int ProjecttestControl::init(
 
 std::vector<HttpControl> ProjecttestControl::getMapping() {
   std::vector<HttpControl> controlList = {
-   {"/detect",ProjecttestControl::projecttestDetectCb}
+   {"/projecttest/detect",ProjecttestControl::projecttestDetectCb}
   };
   return controlList;
 }
