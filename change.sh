@@ -16,7 +16,7 @@ then
   rename "s/projecttest/$pg/g" *
 else
   echo "centos"
-  rename info $pg *
+  rename projecttest $pg *
 fi
 
 sed -i "s/projecttest/$pg/g" `find . -name "$pg*"|grep -v sh`
